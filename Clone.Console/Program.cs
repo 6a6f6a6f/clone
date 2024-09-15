@@ -49,7 +49,7 @@ if (errors.Count != 0)
 
     var files = Directory.GetDirectories(destinationFolder);
     if (files.Length == 0) Directory.Delete(destinationFolder);
-    
+
     Environment.Exit(1);
 }
 

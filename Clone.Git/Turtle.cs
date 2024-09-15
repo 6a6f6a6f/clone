@@ -16,14 +16,14 @@ public static class Turtle
             .WithErrorDataReceivedCallback(line => output?.Invoke(line))
             .WithWorkingDirectory(workingDirectory)
             .WithCancellationToken(ct)
-            .WithArguments("--no-pager" ,"clone", remote, destination)
+            .WithArguments("--no-pager", "clone", remote, destination)
             .RunAsync()
             .Wait(ct);
-        
+
         Directory.Delete(workingDirectory, true);
     }
-    
-    public static bool TryParseRemote(string remote, 
+
+    public static bool TryParseRemote(string remote,
         [NotNullWhen(true)] out string? user,
         [NotNullWhen(true)] out string? repository)
     {
@@ -38,10 +38,10 @@ public static class Turtle
         {
             user = default;
             repository = default;
-            
+
             return false;
         }
-        
+
         try
         {
             repository = remote[(remote.LastIndexOf('/') + 1)..];
@@ -51,7 +51,7 @@ public static class Turtle
         {
             user = default;
             repository = default;
-            
+
             return false;
         }
 
