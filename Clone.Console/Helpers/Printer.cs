@@ -2,22 +2,23 @@
 
 public static class Printer
 {
+    private const string Bold = "\x1b[1m";
+    private const string Reset = "\x1b[0m";
+
     private static void PrintMessage(string prefix, string message, ConsoleColor color, TextWriter? writer = default)
     {
         ForegroundColor = color;
 
         if (writer is null)
         {
-            Write(prefix);
+            Write($"{Bold}{prefix}{Reset}");
             ResetColor();
-
             WriteLine(message);
         }
         else
         {
-            writer.Write(prefix);
+            writer.Write($"{Bold}{prefix}{Reset}");
             ResetColor();
-
             writer.WriteLine(message);
         }
     }
