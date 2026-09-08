@@ -1,14 +1,17 @@
 {
-  "ready": false,
-  "reviewed_commit": null,
+  "ready": true,
+  "reviewed_commit": "1711d945789ec1d3a987b8c187845bc543f5c0e5",
   "checks": {
-    "arm64_current_macos": "pending",
-    "authenticated_clone": "pending",
-    "homebrew_install_upgrade_uninstall": "pending",
-    "tampered_bottle_rejected": "pending"
+    "arm64_current_macos": "passed",
+    "authenticated_clone": "passed",
+    "homebrew_install_upgrade_uninstall": "passed",
+    "tampered_bottle_rejected": "passed"
   },
   "evidence": [
-    "https://github.com/6a6f6a6f/clone/issues/22#issuecomment-5593012342"
+    "https://github.com/6a6f6a6f/clone/issues/22#issuecomment-5593012342",
+    "https://github.com/6a6f6a6f/clone/actions/runs/34289833100",
+    "https://github.com/6a6f6a6f/clone/issues/22#issuecomment-5593448669",
+    "https://github.com/6a6f6a6f/clone/issues/22#issuecomment-5593364823"
   ],
   "channel": "homebrew",
   "platform": {
@@ -17,5 +20,11 @@
     "local_acceptance_version": "26.6.2",
     "local_acceptance_build": "25G83",
     "hosted_runner": "macos-26"
+  },
+  "acceptance_basis": {
+    "authenticated_clone": "Independently executed Native AOT 1.0.0 private HTTPS Git smart-protocol clone with ephemeral credentials, TLS verification and noninteractive rejection; see the authentication evidence link.",
+    "homebrew": "Local install, tampered-upgrade rejection with old-version preservation, upgrade from 0.2.5 to 1.0.0, reinstall and uninstall passed for the prepared source.",
+    "owner_scope": "Owner accepted #22, authorized release v1.0.0 and excluded Apple-signed packages.",
+    "production": "Production tag, attestations and public asset integrity remain verified by the protected release workflow."
   }
 }
