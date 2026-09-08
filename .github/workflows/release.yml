@@ -1,12 +1,11 @@
 name: Release the Artifact for Multiple OS
 
 on:
-  push:
-    tags:
-      - 'v*'
+  workflow_dispatch:
 
 jobs:
   build-and-release:
+    if: ${{ false }} # Migration freeze: keep disabled until release gates are satisfied.
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:

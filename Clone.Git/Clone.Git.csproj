@@ -1,32 +1,6 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
-
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-  </PropertyGroup>
-
-
-  <PropertyGroup>
-    <RuntimeIdentifiers>win-x64;linux-x64;linux-musl-x64;osx-arm64</RuntimeIdentifiers>
-  </PropertyGroup>
-
-  <PropertyGroup>
-    <PublishAot>true</PublishAot>
     <IsAotCompatible>true</IsAotCompatible>
-
-    <PublishTrimmed>true</PublishTrimmed>
-    <TrimMode>full</TrimMode>
-    <TieredPGO>true</TieredPGO>
-
-    <OptimizationPreference>Size</OptimizationPreference>
-    <DisableRuntimeMarshalling>true</DisableRuntimeMarshalling>
-    <EnableUnsafeReflection>false</EnableUnsafeReflection>
-
-    <EnableAotAnalyzer>true</EnableAotAnalyzer>
-    <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
-
-    <EnableUnsafeReflection>false</EnableUnsafeReflection>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
-
 </Project>

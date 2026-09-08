@@ -1,4 +1,4 @@
-﻿namespace Clone.Git;
+namespace Clone.Git;
 
 public static class Turtle
 {
