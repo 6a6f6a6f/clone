@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability privately
+    url: https://github.com/6a6f6a6f/clone/security/advisories/new
+    about: Do not disclose vulnerabilities, credentials or private repository contents in public issues.

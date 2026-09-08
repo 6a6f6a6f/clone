@@ -1,0 +1,54 @@
+name: Bug report
+description: Report a reproducible CLI or Homebrew installation problem.
+title: "fix: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        For vulnerabilities, use the private security report link instead.
+        Remove credentials, personal paths and private repository details from all fields.
+  - type: input
+    id: version
+    attributes:
+      label: Clone version
+      description: Output of clone --version, or the source commit for a development build.
+    validations:
+      required: true
+  - type: input
+    id: platform
+    attributes:
+      label: macOS version and build
+      description: Output of sw_vers. Supported platform is macOS 26 on Apple Silicon.
+    validations:
+      required: true
+  - type: dropdown
+    id: installation
+    attributes:
+      label: Installation method
+      options:
+        - Homebrew bottle
+        - Homebrew source build
+        - Development build
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: Include sanitized commands and a public or synthetic example; never include tokens.
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Expected and actual behavior
+      description: Include the exit code and whether existing files were affected.
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Sanitized diagnostics
+      description: Optional relevant errors and Git version. Do not paste your environment or credential configuration.
+      render: text
