@@ -21,8 +21,8 @@ def gh(*args, capture=False):
 def publish(manifests):
     check(json.loads((ROOT / '.github/release-acceptance.json').read_text()))
     entries = [validate_manifest(Path(path)) for path in manifests]
-    if len(entries) != 2 or {entry['rid'] for entry in entries} != {'osx-arm64', 'osx-x64'}:
-        raise ValueError('Both validated architecture manifests are required.')
+    if len(entries) != 1 or entries[0]['rid'] != 'osx-arm64':
+        raise ValueError('Exactly one validated Apple Silicon manifest is required.')
     identities = {(entry['version'], entry['commit']) for entry in entries}
     if len(identities) != 1:
         raise ValueError('Release artifact identities disagree.')
@@ -47,7 +47,7 @@ def publish(manifests):
         sums.write_text(''.join(f'{checksum}  {name}\n' for entry in entries for name, checksum in entry['files'].items()))
         assets.append(sums)
         notes = temporary / 'notes.md'
-        notes.write_text(f'Clone {release_version} for macOS 14 and later.\n\n'
+        notes.write_text(f'Clone {release_version} for Apple Silicon Macs running macOS 14 and later.\n\n'
                          'Includes the secure clone core, first-use configuration, Homebrew metadata, '
                          'and signed/notarized native installers.\n\n'
                          'Verify SHA256SUMS and GitHub artifact attestations before direct use. '
@@ -66,7 +66,7 @@ def publish(manifests):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('manifests', nargs=2)
+    parser.add_argument('manifests', nargs=1)
     args = parser.parse_args()
     try:
         publish(args.manifests)

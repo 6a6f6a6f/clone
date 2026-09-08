@@ -7,14 +7,7 @@ jobs:
   validate:
     if: ${{ false }} # Migration freeze; repository Actions is also disabled.
     timeout-minutes: 30
-    strategy:
-      matrix:
-        include:
-          - runner: macos-15
-            rid: osx-arm64
-          - runner: macos-15-intel
-            rid: osx-x64
-    runs-on: ${{ matrix.runner }}
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -27,10 +20,10 @@ jobs:
       - run: python3 scripts/test_release.py
       - run: python3 scripts/release.py prepare --version 0.2.0 --rid "$RID" --development
         env:
-          RID: ${{ matrix.rid }}
+          RID: osx-arm64
       - run: dotnet list Clone.Tests/Clone.Tests.csproj package --vulnerable --include-transitive
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: development-${{ matrix.rid }}
+          name: development-osx-arm64
           path: artifacts/release/
           if-no-files-found: error

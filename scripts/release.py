@@ -16,7 +16,7 @@ import zipfile
 ROOT = Path(__file__).resolve().parents[1]
 PREFIX = Path('Library/Application Support/Clone')
 IDENTIFIER = 'io.github.6a6f6a6f.clone'
-ARCHITECTURES = {'osx-arm64': 'arm64', 'osx-x64': 'x86_64'}
+ARCHITECTURES = {'osx-arm64': 'arm64'}
 
 
 def run(*args, cwd=ROOT, capture=False):
@@ -90,11 +90,13 @@ def make_payload(directory, binary):
 
 def prepare(release_version, rid, development):
     version(release_version)
+    if rid not in ARCHITECTURES:
+        raise ValueError('Only osx-arm64 (Apple Silicon) is supported.')
     if platform.system() != 'Darwin':
         raise ValueError('macOS packaging requires a Mac.')
     native = platform.machine() == ARCHITECTURES[rid]
-    if not development and not native:
-        raise ValueError('Production artifacts require native architecture validation.')
+    if not native:
+        raise ValueError('Packaging requires a native Apple Silicon host.')
     app_identity = os.environ.get('CLONE_APP_IDENTITY')
     installer_identity = os.environ.get('CLONE_INSTALLER_IDENTITY')
     notary_profile = os.environ.get('CLONE_NOTARY_PROFILE')
@@ -163,20 +165,18 @@ def prepare(release_version, rid, development):
 
 def homebrew_cask(manifests, destination):
     entries = [validate_manifest(Path(path)) for path in manifests]
-    if {entry['rid'] for entry in entries} != set(ARCHITECTURES) or len(entries) != 2:
-        raise ValueError('Both validated macOS architectures are required.')
-    if len({(entry['version'], entry['commit']) for entry in entries}) != 1:
-        raise ValueError('Artifacts must share the same version and source commit.')
-    text = ['cask "clone" do', f'  version "{entries[0]["version"]}"']
-    for data in sorted(entries, key=lambda entry: entry['rid']):
-        name = next(name for name in data['files'] if name.endswith('.tar.gz'))
-        text += ['', '  on_arm do' if data['rid'] == 'osx-arm64' else '  on_intel do',
-                 f'    sha256 "{data["files"][name]}"',
-                 f'    url "https://github.com/6a6f6a6f/clone/releases/download/v{data["version"]}/{name}"', '  end']
-    text += ['', '  name "Clone"', '  desc "Organize Git checkouts safely"',
-             '  homepage "https://github.com/6a6f6a6f/clone"', '',
-             '  depends_on macos: ">= :sonoma"', '  depends_on formula: "git"', '',
-             '  binary "bin/clone"', '  zsh_completion "share/zsh/site-functions/_clone"', 'end', '']
+    if len(entries) != 1 or entries[0]['rid'] != 'osx-arm64':
+        raise ValueError('Exactly one validated Apple Silicon manifest is required.')
+    data = entries[0]
+    name = next(name for name in data['files'] if name.endswith('.tar.gz'))
+    text = ['cask "clone" do', f'  version "{data["version"]}"',
+            f'  sha256 "{data["files"][name]}"',
+            f'  url "https://github.com/6a6f6a6f/clone/releases/download/v{data["version"]}/{name}"', '',
+            '  name "Clone"', '  desc "Organize Git checkouts safely"',
+            '  homepage "https://github.com/6a6f6a6f/clone"', '',
+            '  depends_on arch: :arm64', '  depends_on macos: ">= :sonoma"',
+            '  depends_on formula: "git"', '', '  binary "bin/clone"',
+            '  zsh_completion "share/zsh/site-functions/_clone"', 'end', '']
     destination = Path(destination)
     if destination.exists():
         raise ValueError('Cask output exists; refusing to replace it.')
@@ -195,7 +195,7 @@ def main():
     verify.add_argument('manifest', type=Path)
     verify.add_argument('--development', action='store_true')
     brew = commands.add_parser('cask')
-    brew.add_argument('manifests', nargs=2)
+    brew.add_argument('manifests', nargs=1)
     brew.add_argument('--output', required=True)
     args = parser.parse_args()
     try:

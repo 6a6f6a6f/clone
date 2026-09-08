@@ -7,8 +7,8 @@ not contain these changes. Unsigned files with `-development` in their names
 are local validation artifacts and cannot pass the production release gate.
 Do not distribute them as signed/notarized releases.
 
-The target is macOS 14 or later, with separate Apple Silicon and Intel downloads.
-Build and Rosetta checks do not replace acceptance on native hardware and the
+The target is Apple Silicon Macs running macOS 14 or later (`osx-arm64`).
+Intel Macs are not supported. Build checks do not replace acceptance on the
 minimum OS. The authoritative outstanding matrix is
 [release-acceptance.json](../.github/release-acceptance.json).
 
@@ -27,8 +27,8 @@ brew reinstall --cask 6a6f6a6f/clone/clone
 brew uninstall --cask 6a6f6a6f/clone/clone
 ```
 
-The Cask selects a versioned native archive and a fixed SHA-256 per architecture,
-links the CLI and zsh completion, and declares Git as a dependency. It does not
+The Cask selects a versioned native archive and a fixed SHA-256 for Apple Silicon,
+links the CLI and zsh completion, requires Apple Silicon, and declares Git as a dependency. It does not
 compile Clone or require the .NET SDK. Cask delivery was selected because a
 formula installation unnecessarily entered Homebrew's source-build toolchain
 checks on the reviewed host. It uses Homebrew's normal quarantine handling.
@@ -41,15 +41,15 @@ upgrades in the release acceptance environment as well as successful upgrades.
 
 ## Standalone package channel
 
-Choose the `.pkg` matching `uname -m` from a validated release. Verify its
+Choose the Apple Silicon `.pkg` from a validated release. Verify its
 published SHA-256, GitHub provenance, and Developer ID signature before use.
 Open the package in Installer, or run:
 
 ```sh
-sudo installer -pkg ./clone-VERSION-osx-ARCH.pkg -target /
+sudo installer -pkg ./clone-VERSION-osx-arm64.pkg -target /
 ```
 
-Replace `VERSION` and `ARCH` with the exact release values (`arm64` or `x64`).
+Replace `VERSION` with the exact release version. The installer rejects other architectures.
 The package installs into `/Library/Application Support/Clone`, with package
 identifier `io.github.6a6f6a6f.clone`. A file under `/private/etc/paths.d` makes
 its `bin` directory visible to a new login shell. Normal cloning requires no
@@ -89,14 +89,12 @@ make check
 make packaging-check
 python3 scripts/check_sdk.py
 make package-dev RID=osx-arm64 VERSION=0.2.0
-make package-dev RID=osx-x64 VERSION=0.2.0
 python3 scripts/release.py verify \
   artifacts/release/0.2.0/osx-arm64/manifest.json --development
 ```
 
 Outputs are never overwritten. Preserve or explicitly remove an earlier local
-output before reusing its version. Development packaging may cross-build;
-production packaging requires a matching native host. No local development
+output before reusing its version. All packaging requires a native Apple Silicon host. No local development
 command creates a Git tag, signs with an invented identity, or publishes assets.
 
 The package builder validates the version, architecture, native version output,
@@ -129,7 +127,7 @@ Never paste those values into an issue or log. `signing_keychain.py` uses an
 isolated ephemeral keychain, suppresses credential-bearing subprocess output,
 and has an always-run cleanup step. Review certificate expiry and permissions.
 
-The workflow builds and tests on each architecture, signs the executable and
+The workflow builds and tests on Apple Silicon, signs the executable and
 package, submits a ZIP of the signed executable and the package to Apple,
 staples the package, and verifies the final files. The public tar archive
 contains that same signed executable; a bare executable/tar archive cannot be
@@ -154,8 +152,8 @@ Record evidence for every check in `release-acceptance.json` and set a reviewed
 source commit only after the results are assessed. `check_release_gate.py`
 rejects incomplete evidence and shipping/validation changes after that commit.
 A review-only change to the acceptance record may follow the tested commit.
-Do not claim clean-machine, authenticated, notarized, or native Intel results
-from managed tests, development packages, or Rosetta execution.
+Do not claim clean-machine, authenticated or notarized results from managed
+tests or development packages.
 See [VALIDATION.md](VALIDATION.md) for the local evidence and the remaining
 installed-experience procedure.
 

@@ -3,12 +3,14 @@
 Recorded September 8, 2026, for the stacked migration branches. These results
 describe local development artifacts. They do not authorize a production
 release or CI/CD reactivation. The acceptance record remains `ready: false`.
+Support is limited to Apple Silicon; Intel is excluded from the release and
+acceptance scope.
 
 ## Local environment and evidence
 
 Host: Apple Silicon, macOS 26.6.2 (25G83), .NET SDK 10.0.400, Apple Command Line
-Tools, with Rosetta available. No valid Developer ID signing identity was
-available locally; no repository signing secrets were provisioned.
+Tools. No valid Developer ID signing identity was available locally; no
+repository signing secrets were provisioned.
 
 | Check | Result | Scope and limitations |
 | --- | --- | --- |
@@ -16,9 +18,9 @@ available locally; no repository signing secrets were provisioned.
 | `make packaging-check` | Passed | Packaging tests, ShellCheck, zsh syntax and actionlint; only the intentional constant-false freeze warning is suppressed |
 | SDK servicing and NuGet audit | Passed | Microsoft metadata matched SDK 10.0.400; no known vulnerable resolved test packages were reported at review time |
 | ARM64 Native AOT | Passed | Standalone help/version, configuration save/load, preview and an actual public HTTPS clone; no development dylib required |
-| Intel Native AOT | Partial | Cross-build, binary version and configuration checks passed under Rosetta; native Intel remains untested |
-| Native dependency inspection | Passed locally | `otool -L` on both binaries listed only Apple system libraries/frameworks; no Homebrew or development library paths |
-| Development archives and packages | Passed locally | Both architecture packages built; archive modes/payload and expanded `.pkg` contents inspected; system package installation was not performed |
+| Architecture restrictions | Passed | MSBuild rejected `osx-x64` and an `x86_64` adapter override; packaging rejected Intel; the Apple Silicon Cask lifecycle passed |
+| Native dependency inspection | Passed locally | `otool -L` on the ARM64 binary listed only Apple system libraries/frameworks; no Homebrew or development library paths |
+| Development archives and packages | Passed locally | The ARM64 package built; archive modes/payload and expanded `.pkg` contents inspected; system package installation was not performed |
 | Isolated Homebrew lifecycle | Passed for payloads | Install, upgrade 0.2.0 to 0.2.1, reinstall and uninstall verified exact binary/completion bytes and cleaned the isolated tap/links |
 | Quarantined unsigned Cask execution | Did not pass | The unsigned fixture terminated without version output; quarantine was preserved and no Gatekeeper bypass was attempted |
 | Production signing/notarization/provenance | Pending | Workflow and validation code exist; real Apple credentials and signed artifact acceptance are required |
@@ -35,12 +37,11 @@ a cold-start benchmark or a release performance guarantee.
 | Binary | Size | Median elapsed time | Execution |
 | --- | --- | --- | --- |
 | `osx-arm64` | 3,396,920 bytes | 4.20 ms | Native Apple Silicon |
-| `osx-x64` | 3,410,904 bytes | 9.11 ms | Rosetta on the same host |
 
 ## Installed-experience acceptance still required
 
-Use disposable clean Macs/VMs without .NET. Cover Apple Silicon and native
-Intel on macOS 14 and the current supported macOS, for both distribution
+Use disposable clean Macs/VMs without .NET. Cover Apple Silicon
+on macOS 14 and the current supported macOS, for both distribution
 channels. Record OS/build, architecture, source commit, Git version, artifact
 SHA-256, signature identity, commands and outcomes without credentials.
 

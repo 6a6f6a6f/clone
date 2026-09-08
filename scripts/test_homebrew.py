@@ -21,7 +21,9 @@ def main():
     brew = shutil.which('brew')
     if not brew or platform.system() != 'Darwin':
         parser.error('An existing macOS Homebrew installation is required.')
-    rid = 'osx-arm64' if platform.machine() == 'arm64' else 'osx-x64'
+    if platform.machine() != 'arm64':
+        parser.error('Only native Apple Silicon is supported.')
+    rid = 'osx-arm64'
     environment = os.environ.copy()
     environment.update(HOMEBREW_NO_AUTO_UPDATE='1', HOMEBREW_NO_ANALYTICS='1', HOMEBREW_NO_INSTALL_CLEANUP='1')
 
@@ -63,6 +65,7 @@ def main():
   name "Clone migration fixture"
   desc "Temporary local packaging acceptance"
   homepage "https://github.com/6a6f6a6f/clone"
+  depends_on arch: :arm64
   depends_on macos: ">= :sonoma"
   depends_on formula: "git"
   binary "bin/clone", target: "clone-migration-check"

@@ -59,20 +59,22 @@ class ReleaseTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 release.validate_manifest(path)
 
-    def test_cask_requires_matching_architecture_identities(self):
+    def test_cask_requires_one_apple_silicon_manifest(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             arm, _ = self.fixture(root)
-            intel, data = self.fixture(root, 'osx-x64')
-            release.homebrew_cask([arm, intel], root / 'clone.rb')
+            release.homebrew_cask([arm], root / 'clone.rb')
             text = (root / 'clone.rb').read_text()
-            self.assertIn('on_arm do', text)
-            self.assertIn('on_intel do', text)
+            self.assertIn('depends_on arch: :arm64', text)
+            self.assertNotIn('on_intel', text)
             self.assertNotIn('latest/download', text)
-            data['commit'] = 'b' * 40
-            intel.write_text(json.dumps(data))
+            intel, _ = self.fixture(root, 'osx-x64')
             with self.assertRaises(ValueError):
-                release.homebrew_cask([arm, intel], root / 'bad.rb')
+                release.homebrew_cask([intel], root / 'bad.rb')
+            with self.assertRaises(ValueError):
+                release.homebrew_cask([arm, arm], root / 'duplicate.rb')
+            with self.assertRaises(ValueError):
+                release.prepare('0.2.0', 'osx-x64', development=True)
 
     def test_payload_hashes_and_paths(self):
         with tempfile.TemporaryDirectory() as directory:

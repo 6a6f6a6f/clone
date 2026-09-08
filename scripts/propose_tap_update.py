@@ -55,16 +55,16 @@ Publish the verified Homebrew cask for Clone {release_version}. Addresses #20.
 
 ## Motivation
 
-Make the public macOS binaries installable and upgradable through the project-owned tap.
+Make the public Apple Silicon binaries installable and upgradable through the project-owned tap.
 
 ## Changes
 
-- Select immutable architecture-specific release URLs and SHA-256 values.
+- Select immutable Apple Silicon release URLs and SHA-256 values.
 - Install the CLI and zsh completion through Homebrew without a .NET runtime.
 
 ## Validation
 
-- Both local manifests passed integrity and production-state validation.
+- The Apple Silicon manifest passed integrity and production-state validation.
 - Public release asset digests match the validated artifacts.
 - Cask links the signed CLI and zsh completion without running downloaded setup scripts.
 - Review the release acceptance evidence before merging this metadata update.
@@ -91,7 +91,7 @@ Revert the cask metadata commit to restore the previous install target; preserve
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('manifests', nargs=2)
+    parser.add_argument('manifests', nargs=1)
     args = parser.parse_args()
     try:
         propose(args.manifests)

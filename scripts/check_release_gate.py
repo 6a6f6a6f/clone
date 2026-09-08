@@ -6,7 +6,7 @@ import re
 import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
-REQUIRED = {'arm64_current_macos', 'arm64_macos_14', 'intel_current_macos', 'intel_macos_14',
+REQUIRED = {'arm64_current_macos', 'arm64_macos_14',
             'authenticated_clone', 'homebrew_install_upgrade_uninstall',
             'pkg_install_upgrade_uninstall', 'quarantined_signed_download'}
 

@@ -1,9 +1,9 @@
 # Security model
 
-Clone supports normal-user operation on macOS 14 or later. It is not a sandbox
+Clone supports normal-user operation on Apple Silicon Macs with macOS 14 or later. It is not a sandbox
 for a compromised user account, an explicitly selected malicious Git binary,
-or trusted user Git/SSH configuration. Running as root is rejected. macOS Intel
-and minimum-OS runtime acceptance must be completed before advertising release
+or trusted user Git/SSH configuration. Running as root is rejected. Intel Macs are not supported.
+Minimum-OS runtime acceptance must be completed before advertising release
 support; source/build support alone is insufficient.
 
 ## Inputs and remote execution

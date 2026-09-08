@@ -99,9 +99,9 @@ make publish RID=osx-arm64
 artifacts/publish/osx-arm64/clone --version
 ```
 
-The maintained source targets macOS 14 or later and builds for `osx-arm64` and
-`osx-x64`. Only architectures and OS versions passing the release acceptance
-matrix will be advertised for distribution. The C interop adapter is compiled
+The maintained source targets Apple Silicon Macs running macOS 14 or later
+(`osx-arm64`). Intel Macs are not supported. OS versions must pass the release
+acceptance matrix before distribution is advertised. The C interop adapter is compiled
 with Clang and linked statically into Native AOT; its development dylib is only
 used by managed builds/tests. No third-party runtime NuGet package is required.
 
