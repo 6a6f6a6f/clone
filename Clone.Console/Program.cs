@@ -1,56 +1,21 @@
-if (args.Length != 1)
+using Clone.Git;
+
+try
 {
-    Printer.PrintError("You must call Router with only one command line argument!");
-    Environment.Exit(1);
+    if (args.Length != 1) throw new ArgumentException("Usage: clone <remote>");
+    var root = Environment.GetEnvironmentVariable("CLONE_PROJECT_FOLDER") ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Projects");
+    using var cancellation = new CancellationTokenSource();
+    Console.CancelKeyPress += (_, e) => { e.Cancel = true; cancellation.Cancel(); };
+    var request = new CloneRequest(args[0], root, Environment.GetEnvironmentVariable("CLONE_PROJECT_FOLDER") is null ? CloneLayout.Host : CloneLayout.Legacy, Interactive: !Console.IsInputRedirected);
+    var destination = await CloneService.CloneAsync(request, (line, _) => Console.Error.WriteLine(line), cancellation.Token);
+    Console.WriteLine(destination);
+    return 0;
 }
-
-var remote = args[0];
-if (!Turtle.TryParseRemote(remote, out var user, out var repository))
+catch (OperationCanceledException) { Console.Error.WriteLine("Canceled; no incomplete clone was published."); return 130; }
+catch (TimeoutException error) { Console.Error.WriteLine(error.Message); return 124; }
+catch (ArgumentException error) { Console.Error.WriteLine(DiagnosticText.Sanitize(error.Message)); return 2; }
+catch (Exception error) when (error is IOException or UnauthorizedAccessException or PlatformNotSupportedException)
 {
-    Printer.PrintError("Invalid remote format!");
-    Environment.Exit(1);
+    Console.Error.WriteLine(DiagnosticText.Sanitize(error.Message));
+    return 1;
 }
-
-var projectFolder = Environment.GetEnvironmentVariable("CLONE_PROJECT_FOLDER");
-if (!Directory.Exists(projectFolder))
-{
-    Printer.PrintWarning("Project folder does not exist!");
-    Printer.PrintInformational("Set `CLONE_PROJECT_FOLDER` with root folder for clones.");
-    Environment.Exit(1);
-}
-
-var destinationFolder = Path.Combine(projectFolder, user);
-if (!Directory.Exists(destinationFolder)) Directory.CreateDirectory(destinationFolder);
-
-var cloneFolder = Path.Combine(destinationFolder, repository);
-if (Directory.Exists(cloneFolder))
-{
-    Printer.PrintWarning("Repository already exists!");
-    Printer.PrintInformational("You may want to check the docs to improve your usage.");
-    Environment.Exit(1);
-}
-
-var errors = new List<string>();
-Turtle.Clone(remote, cloneFolder, output =>
-{
-    if (output.StartsWith("ERROR:"))
-    {
-        errors.Add(output);
-        return;
-    }
-
-    Printer.PrintGitStdout(output);
-});
-
-if (errors.Count != 0)
-{
-    Printer.PrintError("Git had problems cloning your remote: ");
-    errors.ForEach(Printer.PrintError);
-
-    var files = Directory.GetDirectories(destinationFolder);
-    if (files.Length == 0) Directory.Delete(destinationFolder);
-
-    Environment.Exit(1);
-}
-
-Printer.PrintSuccess("Repository cloned!");
