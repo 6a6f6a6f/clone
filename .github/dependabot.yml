@@ -4,9 +4,13 @@ updates:
     directory: /
     schedule:
       interval: weekly
-    open-pull-requests-limit: 0 # Keep update automation paused during migration.
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(deps)"
   - package-ecosystem: nuget
     directory: /
     schedule:
       interval: weekly
-    open-pull-requests-limit: 0 # Raise after migration acceptance and CI reactivation.
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(deps)"
