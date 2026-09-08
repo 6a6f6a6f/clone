@@ -13,7 +13,7 @@ release does not contain these fixes**. New distribution artifacts must pass the
 
 See [macOS distribution](docs/MACOS_DISTRIBUTION.md) for the Homebrew formula/bottle channel and
 deferred signed package channel, update/uninstall commands, and their current acceptance
-gates. The migration has not published a new modernization release yet.
+gates. See [published releases](https://github.com/6a6f6a6f/clone/releases) for availability.
 
 ## Quickstart
 
@@ -113,7 +113,8 @@ installs this file into its documented completion location.
 
 - [Security model](docs/SECURITY_MODEL.md)
 - [Migration plan](docs/MODERNIZATION_PLAN.md)
-- [CI/CD pause](docs/CI_FREEZE.md)
+- [CI and release controls](docs/CI_FREEZE.md)
+- [Security policy and private vulnerability reports](SECURITY.md)
 - [Original Portuguese introduction (historical)](docs/README.pt-BR.md)
 
 Licensed under the WTFPL, as originally stated by this project. See [LICENSE](LICENSE).

@@ -11,7 +11,8 @@ GitHub controls image updates, so it is not an exact pin to the local Mac build.
 CI verifies formatting, builds, tests, packaging checks, Native AOT execution
 and the installed Homebrew lifecycle. PR jobs have read-only repository access.
 Actions use immutable SHA pins, with repository-level SHA pinning enabled and
-an allowlist of the five exact action revisions used by these workflows. Updating
+an allowlist of the exact action revisions used by these workflows, including
+the pinned transitive provenance action. Updating
 an action requires reviewing and updating that allowlist before the new run.
 
 Release automation is enabled but remains manually dispatched on a reviewed version tag.
@@ -22,13 +23,13 @@ not mark pending authentication or final-artifact acceptance as passed and does
 not create a release automatically. Apple certificates remain unnecessary for
 the Homebrew channel; signed system packages are deferred separately.
 
-Dependabot update proposals remain separately paused until maintenance
-automation is enabled. To stop automation again, disable repository Actions
+Dependabot proposes weekly Actions and NuGet updates subject to CI and
+maintainer review. To stop automation again, disable repository Actions
 and both workflows; no source rollback or artifact replacement is necessary.
 
 Repository token defaults are read-only. The separate GitHub setting allowing
-Actions to create and approve PRs remains disabled: automatic approval review
-rejected that permission expansion. CI and guarded release jobs are enabled,
-but the post-publication formula-PR step needs this setting explicitly approved
-and enabled before the first release. GitHub exposes PR creation and review
-approval under the same setting; there is no creation-only repository toggle.
+Actions to create and approve PRs remains disabled. After release publication,
+a maintainer runs `scripts/propose_tap_update.py` on the verified downloaded
+manifest to open the formula PR using their own authenticated account. The
+publication job has no PR-write permission and records this explicit handoff.
+This preserves the restricted workflow policy without breaking publication.

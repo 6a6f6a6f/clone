@@ -64,7 +64,6 @@ jobs:
     permissions:
       contents: write
       attestations: read
-      pull-requests: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -83,10 +82,6 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_VERSION: ${{ inputs.version }}
-      - name: Propose verified Homebrew metadata
+      - name: Record Homebrew promotion handoff
         run: |
-          python3 scripts/propose_tap_update.py \
-            "artifacts/downloads/homebrew-osx-arm64/$RELEASE_VERSION/arm64_tahoe/manifest.json"
-        env:
-          GH_TOKEN: ${{ github.token }}
-          RELEASE_VERSION: ${{ inputs.version }}
+          echo 'Release published. A maintainer must run scripts/propose_tap_update.py with the verified manifest and review the resulting formula PR.' >> "$GITHUB_STEP_SUMMARY"

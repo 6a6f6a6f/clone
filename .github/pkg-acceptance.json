@@ -1,7 +1,7 @@
 {
   "channel": "signed-pkg",
   "ready": false,
-  "status": "deferred until Apple Developer credentials are available",
+  "status": "out of scope; issues #18 and #21 closed as not planned by the owner",
   "checks": {
     "pkg_install_upgrade_uninstall": "pending",
     "quarantined_signed_download": "pending"
