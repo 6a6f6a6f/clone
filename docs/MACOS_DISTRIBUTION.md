@@ -99,7 +99,9 @@ identity, valid manifests and artifact attestations. It creates a draft, uploads
 the complete asset set, and checks remote names, sizes and SHA-256 digests before
 publication. It never replaces existing assets. A failure leaves any partial
 draft unpublished for inspection. A separate PR then updates `Formula/clone.rb`
-only after public release asset digests match. The workflow needs permission to create metadata PRs.
+only after public release asset digests match. A maintainer opens the metadata PR using `scripts/propose_tap_update.py` and
+the verified release manifest after publication. The workflow does not request
+permission to create or approve PRs.
 Dispatch it on the reviewed `v<version>` tag with the matching numeric version input.
 
 Merge review and release acceptance are separate. CI/CD reactivation is
@@ -112,7 +114,9 @@ hosted-artifact or tampered-download acceptance passed from a local build alone.
 
 The signed `.pkg` channel is deferred until Apple Developer ID Application and
 Installer identities plus notarization credentials are available. Its status is
-tracked separately in `.github/pkg-acceptance.json`; it does not block Homebrew.
+out of the current scope; #18/#21 were closed as not planned. Reopen them or
+create a new issue if Apple-signed distribution is requested later. It does not
+block Homebrew.
 The optional `scripts/release.py prepare` package builder and guarded payload
 remain available for future validation. They are not called by the Brew release
 workflow and an unsigned development package is not a supported user download.
