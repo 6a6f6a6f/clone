@@ -45,7 +45,7 @@ def publish(manifests):
         sums.write_text(''.join(f'{checksum}  {name}\n' for entry in entries for name, checksum in entry['files'].items()))
         assets.append(sums)
         notes = temporary / 'notes.md'
-        notes.write_text(f'Clone {release_version} for Apple Silicon Macs running macOS 14 and later.\n\n'
+        notes.write_text(f'Clone {release_version} for Apple Silicon Macs running macOS 26 (Tahoe).\n\n'
                          'Includes the secure clone core, first-use configuration, Homebrew metadata, '
                          'and source-built Homebrew bottles. No Apple certificate or installed .NET runtime is required for bottled installation.\n\n'
                          'Verify SHA256SUMS and GitHub artifact attestations before direct use. '

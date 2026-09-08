@@ -9,7 +9,7 @@
     <OptimizationPreference>Size</OptimizationPreference>
     <InvariantGlobalization>true</InvariantGlobalization>
     <StackTraceSupport>false</StackTraceSupport>
-    <AppleMinOSVersion>14.0</AppleMinOSVersion>
+    <AppleMinOSVersion>26.0</AppleMinOSVersion>
     <JsonSerializerIsReflectionEnabledByDefault>false</JsonSerializerIsReflectionEnabledByDefault>
     <UseSystemResourceKeys>true</UseSystemResourceKeys>
   </PropertyGroup>

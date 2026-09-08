@@ -14,7 +14,7 @@ import tempfile
 from release import ROOT, digest, run, verify_tag, version
 
 REPOSITORY = '6a6f6a6f/clone'
-TAGS = {'14': 'arm64_sonoma', '15': 'arm64_sequoia', '26': 'arm64_tahoe'}
+TAGS = {'26': 'arm64_tahoe'}
 
 
 def formula(release_version, source_sha, bottle_sha=None, tag=None, *, name='clone', root_url=None):
@@ -46,7 +46,7 @@ def formula(release_version, source_sha, bottle_sha=None, tag=None, *, name='clo
     text += '''  depends_on "dotnet" => :build
   depends_on "git"
   depends_on arch: :arm64
-  depends_on macos: :sonoma
+  depends_on macos: :tahoe
 
   def install
     ENV["DOTNET_CLI_TELEMETRY_OPTOUT"] = "1"

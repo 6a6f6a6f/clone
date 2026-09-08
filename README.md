@@ -4,7 +4,7 @@ A small macOS command-line tool that keeps Git checkouts organized. Clone is
 written in C# and distributed as a Native AOT executable: an installed .NET
 runtime is not required. Git is required.
 
-The .NET 10 migration is under review. CI/CD remains paused; **the old v0.1.0
+The .NET 10 migration is merged. CI validates pushes and pull requests on macOS 26; **the old v0.1.0
 release does not contain these fixes**. New distribution artifacts must pass the
 [release gates](docs/CI_FREEZE.md) before publication. See the
 [modernization tracker](https://github.com/6a6f6a6f/clone/issues/1).
@@ -99,9 +99,9 @@ make publish RID=osx-arm64
 artifacts/publish/osx-arm64/clone --version
 ```
 
-The maintained source targets Apple Silicon Macs running macOS 14 or later
-(`osx-arm64`). Intel Macs are not supported. OS versions must pass the release
-acceptance matrix before distribution is advertised. The C interop adapter is compiled
+The maintained source targets Apple Silicon Macs running macOS 26 (Tahoe)
+(`osx-arm64`). Intel Macs are not supported. Local acceptance uses macOS 26.6.2 (25G83); hosted CI records its own macOS 26 image build.
+Older macOS versions and Intel Macs are outside the support scope. The C interop adapter is compiled
 with Clang and linked statically into Native AOT; its development dylib is only
 used by managed builds/tests. No third-party runtime NuGet package is required.
 

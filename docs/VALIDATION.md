@@ -42,9 +42,10 @@ a cold-start benchmark or a release performance guarantee.
 
 ## Installed-experience acceptance still required
 
-Use disposable clean Macs/VMs without .NET. Cover Apple Silicon
-on macOS 14 and the current supported macOS, for the Homebrew bottle
-channel. Track the signed system-package channel separately. Record OS/build, architecture, source commit, Git version, artifact
+The owner narrowed support to macOS 26 on Apple Silicon on September 8, 2026.
+macOS 14 and 15 acceptance is no longer required. Local installed acceptance on
+26.6.2 (25G83) is recorded in issue #22. Use the hosted macOS 26 environment for
+additional Homebrew bottle coverage; record its exact OS build separately. Track the signed system-package channel separately. Record OS/build, architecture, source commit, Git version, artifact
 SHA-256, signature identity, commands and outcomes without credentials.
 
 1. Verify each downloaded bottle's checksum, provenance and ad hoc integrity

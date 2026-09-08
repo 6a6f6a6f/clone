@@ -88,7 +88,7 @@ class ReleaseTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             path, data = self.homebrew_fixture(Path(directory))
             for key, value in [('development', True), ('native_smoke', 'true'), ('rid', 'osx-x64'),
-                               ('bottle_tag', 'arm64_fake'), ('channel', 'signed-pkg')]:
+                               ('bottle_tag', 'arm64_sonoma'), ('bottle_tag', 'arm64_sequoia'), ('bottle_tag', 'arm64_fake'), ('channel', 'signed-pkg')]:
                 altered = copy.deepcopy(data)
                 altered[key] = value
                 path.write_text(json.dumps(altered))
