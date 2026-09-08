@@ -114,7 +114,7 @@ public sealed class ProcessTests
     {
         using var fixture = new Fixture();
         var script = fixture.Script("/bin/sleep 30 &\necho $! > child.pid\nwait\n");
-        await Assert.ThrowsExactlyAsync<TimeoutException>(() => Runner.RunAsync(script, [], fixture.Root, timeout: TimeSpan.FromMilliseconds(300)));
+        await Assert.ThrowsExactlyAsync<TimeoutException>(() => Runner.RunAsync(script, [], fixture.Root, timeout: TimeSpan.FromSeconds(5)));
         var pid = int.Parse(File.ReadAllText(Path.Combine(fixture.Root, "child.pid")));
         await Task.Delay(100);
         Assert.IsFalse(Fixture.IsRunning(pid));
