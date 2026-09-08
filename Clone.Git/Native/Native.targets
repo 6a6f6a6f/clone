@@ -5,7 +5,7 @@
     <NativeOutput>$(MSBuildThisFileDirectory)../../artifacts/native/$(NativeArchitecture)</NativeOutput>
   </PropertyGroup>
   <Target Name="BuildMacInterop" BeforeTargets="CoreCompile" Condition="$([MSBuild]::IsOSPlatform('OSX'))"
-          Inputs="$(MSBuildThisFileDirectory)clone_native.c" Outputs="$(NativeOutput)/libclone_native.a;$(NativeOutput)/libclone_native.dylib">
+          Inputs="$(MSBuildThisFileDirectory)clone_native.c;$(MSBuildThisFileFullPath)" Outputs="$(NativeOutput)/libclone_native.a;$(NativeOutput)/libclone_native.dylib">
     <MakeDir Directories="$(NativeOutput)" />
     <Exec Command="/usr/bin/clang -Wall -Wextra -Werror -O2 -fPIC -arch $(NativeArchitecture) -mmacosx-version-min=14.0 -c &quot;$(MSBuildThisFileDirectory)clone_native.c&quot; -o &quot;$(NativeOutput)/clone_native.o&quot;" />
     <Exec Command="/usr/bin/ar rcs &quot;$(NativeOutput)/libclone_native.a&quot; &quot;$(NativeOutput)/clone_native.o&quot;" />

@@ -1,0 +1,73 @@
+# Migration validation record
+
+Recorded September 8, 2026, for the stacked migration branches. These results
+describe local development artifacts. They do not authorize a production
+release or CI/CD reactivation. The acceptance record remains `ready: false`.
+
+## Local environment and evidence
+
+Host: Apple Silicon, macOS 26.6.2 (25G83), .NET SDK 10.0.400, Apple Command Line
+Tools, with Rosetta available. No valid Developer ID signing identity was
+available locally; no repository signing secrets were provisioned.
+
+| Check | Result | Scope and limitations |
+| --- | --- | --- |
+| `make check` | Passed | Format verification, Release build with zero warnings/errors, 59 managed tests and 7 packaging tests |
+| `make packaging-check` | Passed | Packaging tests, ShellCheck, zsh syntax and actionlint; only the intentional constant-false freeze warning is suppressed |
+| SDK servicing and NuGet audit | Passed | Microsoft metadata matched SDK 10.0.400; no known vulnerable resolved test packages were reported at review time |
+| ARM64 Native AOT | Passed | Standalone help/version, configuration save/load, preview and an actual public HTTPS clone; no development dylib required |
+| Intel Native AOT | Partial | Cross-build, binary version and configuration checks passed under Rosetta; native Intel remains untested |
+| Native dependency inspection | Passed locally | `otool -L` on both binaries listed only Apple system libraries/frameworks; no Homebrew or development library paths |
+| Development archives and packages | Passed locally | Both architecture packages built; archive modes/payload and expanded `.pkg` contents inspected; system package installation was not performed |
+| Isolated Homebrew lifecycle | Passed for payloads | Install, upgrade 0.2.0 to 0.2.1, reinstall and uninstall verified exact binary/completion bytes and cleaned the isolated tap/links |
+| Quarantined unsigned Cask execution | Did not pass | The unsigned fixture terminated without version output; quarantine was preserved and no Gatekeeper bypass was attempted |
+| Production signing/notarization/provenance | Pending | Workflow and validation code exist; real Apple credentials and signed artifact acceptance are required |
+| Hosted CI/CD | Paused | Repository Actions disabled; release workflow manually disabled; source workflows manual-only with unconditional false guards |
+
+The Homebrew fixture deliberately uses separate command/completion names and
+does not execute a quarantined unsigned binary. This establishes local package
+management behavior, not the signed installed experience.
+
+Native startup observations below use ten sequential `--version` subprocess
+invocations after a warm-up. They include process launch overhead and are not
+a cold-start benchmark or a release performance guarantee.
+
+| Binary | Size | Median elapsed time | Execution |
+| --- | --- | --- | --- |
+| `osx-arm64` | 3,396,920 bytes | 4.20 ms | Native Apple Silicon |
+| `osx-x64` | 3,410,904 bytes | 9.11 ms | Rosetta on the same host |
+
+## Installed-experience acceptance still required
+
+Use disposable clean Macs/VMs without .NET. Cover Apple Silicon and native
+Intel on macOS 14 and the current supported macOS, for both distribution
+channels. Record OS/build, architecture, source commit, Git version, artifact
+SHA-256, signature identity, commands and outcomes without credentials.
+
+1. Verify each downloaded artifact's checksum, provenance and Developer ID
+   signature. Test a quarantined signed download without removing quarantine.
+   Tampered archives/packages must be rejected before installation or execution.
+2. Exercise Homebrew install/upgrade/reinstall/uninstall and package GUI plus
+   `installer` install/upgrade/uninstall. Confirm command discovery in a fresh
+   login shell and completion setup. Check existing command collisions and
+   coexistence of Homebrew/package ownership.
+3. Start without Git and verify an actionable diagnostic; install an approved
+   Git and run `clone doctor`. Exercise first use without saved configuration,
+   then saved configuration, explicit overrides and legacy layout selection.
+4. Clone public HTTPS and a controlled authenticated HTTPS/SSH repository using
+   test credentials or an agent. Confirm noninteractive failures never prompt
+   and diagnostics disclose no credentials. Do not record credential values.
+5. Exercise spaces/Unicode, existing matching/conflicting destinations, offline
+   failure, cancellation and timeout. Confirm the previous destination and
+   unrelated files survive failures and staging cleanup stays confined.
+6. Interrupt an upgrade in a disposable environment. Confirm the previous
+   installed version remains usable or document and resolve the recovery
+   defect before acceptance. Verify failed hashes/signatures do not replace it.
+7. Confirm upgrade, rollback and uninstall preserve user configuration and
+   cloned repositories. Test modified package files and symlink collisions:
+   uninstall/install must stop safely rather than remove unrelated data.
+
+Attach the results to issue #22, then review every entry in
+`.github/release-acceptance.json`. Keep pending entries pending until the actual
+platform/channel evidence exists. Publishing code, executing development tests,
+or obtaining a successful cross-build does not satisfy these gates.

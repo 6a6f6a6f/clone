@@ -24,4 +24,7 @@
     <DirectPInvoke Include="clone_native" />
     <NativeLibrary Include="../artifacts/native/$(NativeArchitecture)/libclone_native.a" />
   </ItemGroup>
+  <Target Name="BuildTargetNativeArchive" BeforeTargets="LinkNative" Condition="$([MSBuild]::IsOSPlatform('OSX'))">
+    <MSBuild Projects="../Clone.Git/Clone.Git.csproj" Targets="BuildMacInterop" Properties="NativeArchitecture=$(NativeArchitecture)" />
+  </Target>
 </Project>

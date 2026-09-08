@@ -1,7 +1,9 @@
 # Clone modernization and macOS delivery plan
 
-Status: backlog published to GitHub; implementation has not started.
+Status: implementation is in stacked draft PRs; distribution acceptance and merge review remain outstanding.
 Reviewed on September 8, 2026, against commit `662d4c2123f01d61ea8c98128abedc5b9cb505e6`.
+
+Implementation uses Homebrew Cask for prebuilt archives, avoiding formula source-build prerequisites. CI/CD remains paused; see [distribution operations](MACOS_DISTRIBUTION.md).
 
 Published backlog: [tracking issue #1](https://github.com/6a6f6a6f/clone/issues/1), with links to all 22 task issues and their dependencies.
 

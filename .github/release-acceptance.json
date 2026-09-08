@@ -1,0 +1,15 @@
+{
+  "ready": false,
+  "reviewed_commit": null,
+  "checks": {
+    "arm64_current_macos": "pending",
+    "arm64_macos_14": "pending",
+    "intel_current_macos": "pending",
+    "intel_macos_14": "pending",
+    "authenticated_clone": "pending",
+    "homebrew_install_upgrade_uninstall": "pending",
+    "pkg_install_upgrade_uninstall": "pending",
+    "quarantined_signed_download": "pending"
+  },
+  "evidence": []
+}

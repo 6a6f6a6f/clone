@@ -9,6 +9,12 @@ release does not contain these fixes**. New signed installers must pass the
 [release gates](docs/CI_FREEZE.md) before publication. See the
 [modernization tracker](https://github.com/6a6f6a6f/clone/issues/1).
 
+## Installation
+
+See [macOS distribution](docs/MACOS_DISTRIBUTION.md) for the Homebrew Cask and
+signed package channels, update/uninstall commands, and their current acceptance
+gates. The migration has not published a new signed release yet.
+
 ## Quickstart
 
 ```sh

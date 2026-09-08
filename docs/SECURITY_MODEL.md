@@ -24,7 +24,8 @@ Hooks and templates are disabled for the clone invocation; no commands from a
 new checkout are launched. User-configured filters/helpers can still run as
 part of Git's documented configuration model.
 
-In noninteractive mode, credential-manager prompts are disabled and SSH runs
+In noninteractive mode, Git and SSH askpass executables are replaced with
+`/usr/bin/false`, credential-manager prompts are disabled, and SSH runs
 with BatchMode=yes. A custom GIT_SSH_COMMAND is retained with that option
 appended; wrappers must support OpenSSH options. Otherwise normal SSH user
 configuration and agents remain available. A finite --timeout is recommended
