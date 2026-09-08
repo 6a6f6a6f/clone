@@ -13,8 +13,8 @@ concurrency:
   cancel-in-progress: false
 jobs:
   acceptance:
-    if: ${{ false }} # Migration freeze; do not remove without reviewed acceptance.
-    runs-on: macos-15
+    if: github.ref_type == 'tag' && github.ref_name == format('v{0}', inputs.version)
+    runs-on: macos-26
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -24,14 +24,13 @@ jobs:
           persist-credentials: false
       - run: python3 scripts/check_release_gate.py
   package:
-    if: ${{ false }} # Defense in depth during the migration freeze.
     needs: acceptance
     timeout-minutes: 60
     permissions:
       contents: read
       id-token: write
       attestations: write
-    runs-on: macos-15
+    runs-on: macos-26
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -58,10 +57,9 @@ jobs:
           path: artifacts/homebrew/
           if-no-files-found: error
   publish:
-    if: ${{ false }} # Migration freeze; publication remains explicitly blocked.
     needs: package
     environment: release-publishing
-    runs-on: macos-15
+    runs-on: macos-26
     timeout-minutes: 15
     permissions:
       contents: write
@@ -81,14 +79,14 @@ jobs:
         shell: bash
         run: |
           python3 scripts/publish_release.py \
-            "artifacts/downloads/homebrew-osx-arm64/$RELEASE_VERSION/arm64_sequoia/manifest.json"
+            "artifacts/downloads/homebrew-osx-arm64/$RELEASE_VERSION/arm64_tahoe/manifest.json"
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_VERSION: ${{ inputs.version }}
       - name: Propose verified Homebrew metadata
         run: |
           python3 scripts/propose_tap_update.py \
-            "artifacts/downloads/homebrew-osx-arm64/$RELEASE_VERSION/arm64_sequoia/manifest.json"
+            "artifacts/downloads/homebrew-osx-arm64/$RELEASE_VERSION/arm64_tahoe/manifest.json"
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_VERSION: ${{ inputs.version }}

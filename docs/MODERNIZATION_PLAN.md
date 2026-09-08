@@ -1,9 +1,9 @@
 # Clone modernization and macOS delivery plan
 
-Status: implementation has local validation and is prepared for authorized sequential integration; CI/CD and release publication remain paused.
+Status: migration PRs are merged; CI/CD reactivation is authorized for macOS 26 on Apple Silicon. Release publication still requires its recorded acceptance checks.
 Reviewed on September 8, 2026, against commit `662d4c2123f01d61ea8c98128abedc5b9cb505e6`.
 
-The first release uses a Homebrew formula and source-built Apple Silicon bottles without Apple certificates. Signed .pkg delivery is deferred. CI/CD remains paused; see [distribution operations](MACOS_DISTRIBUTION.md).
+The first release uses a Homebrew formula and source-built Apple Silicon bottles without Apple certificates. Signed .pkg delivery is deferred. CI runs on macOS 26; see [distribution operations](MACOS_DISTRIBUTION.md).
 
 Published backlog: [tracking issue #1](https://github.com/6a6f6a6f/clone/issues/1), with links to all 22 task issues and their dependencies.
 

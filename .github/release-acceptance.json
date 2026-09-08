@@ -3,11 +3,19 @@
   "reviewed_commit": null,
   "checks": {
     "arm64_current_macos": "pending",
-    "arm64_macos_14": "pending",
     "authenticated_clone": "pending",
     "homebrew_install_upgrade_uninstall": "pending",
     "tampered_bottle_rejected": "pending"
   },
-  "evidence": [],
-  "channel": "homebrew"
+  "evidence": [
+    "https://github.com/6a6f6a6f/clone/issues/22#issuecomment-5593012342"
+  ],
+  "channel": "homebrew",
+  "platform": {
+    "os_major": 26,
+    "architecture": "arm64",
+    "local_acceptance_version": "26.6.2",
+    "local_acceptance_build": "25G83",
+    "hosted_runner": "macos-26"
+  }
 }

@@ -1,13 +1,19 @@
-name: Validate migration locally mirrored checks
+name: CI
 on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   validate:
-    if: ${{ false }} # Migration freeze; repository Actions is also disabled.
     timeout-minutes: 30
-    runs-on: macos-15
+    runs-on: macos-26
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -15,10 +21,21 @@ jobs:
       - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           global-json-file: global.json
+      - name: Record hosted platform
+        run: |
+          sw_vers
+          uname -m
+          test "$(uname -m)" = arm64
       - run: python3 scripts/check_sdk.py
       - run: make check
-      - run: python3 scripts/test_release.py
+      - run: brew install actionlint shellcheck
+        env:
+          HOMEBREW_NO_AUTO_UPDATE: "1"
+      - run: make packaging-check
       - run: python3 scripts/homebrew.py prepare --version 0.2.0 --development
+      - run: python3 scripts/homebrew.py prepare --version 0.2.1 --development
+      - name: Exercise installed Homebrew lifecycle
+        run: python3 scripts/test_homebrew.py artifacts/homebrew/0.2.0/arm64_tahoe/manifest.json artifacts/homebrew/0.2.1/arm64_tahoe/manifest.json
       - run: dotnet list Clone.Tests/Clone.Tests.csproj package --vulnerable --include-transitive
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:

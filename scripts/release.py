@@ -128,7 +128,7 @@ def prepare(release_version, rid, development):
         preinstall = scripts / 'preinstall'
         preinstall.write_text((ROOT / 'packaging/macos/preinstall').read_text() +
             f'\n[ "$(/usr/bin/uname -m)" = "{ARCHITECTURES[rid]}" ] || {{ echo "Wrong package architecture." >&2; exit 1; }}\n' +
-            '[ "$(/usr/bin/sw_vers -productVersion | /usr/bin/cut -d. -f1)" -ge 14 ] || { echo "macOS 14 or later is required." >&2; exit 1; }\n')
+            '[ "$(/usr/bin/sw_vers -productVersion | /usr/bin/cut -d. -f1)" -ge 26 ] || { echo "macOS 26 or later is required." >&2; exit 1; }\n')
         preinstall.chmod(0o755)
         suffix = '-development' if development else ''
         stem = f'clone-{release_version}-{rid}{suffix}'
@@ -153,7 +153,7 @@ def prepare(release_version, rid, development):
             run('/usr/bin/xcrun', 'stapler', 'validate', package)
             run('/usr/sbin/pkgutil', '--check-signature', package)
             run('/usr/sbin/spctl', '--assess', '--type', 'install', package)
-        data = {'version': release_version, 'rid': rid, 'commit': commit, 'minimum_macos': '14.0',
+        data = {'version': release_version, 'rid': rid, 'commit': commit, 'minimum_macos': '26.0',
                 'development': development, 'native_smoke': native, 'notarized': not development,
                 'files': {asset.name: digest(asset) for asset in [archive, package]}}
         manifest = output / 'manifest.json'

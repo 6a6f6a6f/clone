@@ -6,9 +6,9 @@
   <Target Name="BuildMacInterop" BeforeTargets="CoreCompile" Condition="$([MSBuild]::IsOSPlatform('OSX'))"
           Inputs="$(MSBuildThisFileDirectory)clone_native.c;$(MSBuildThisFileFullPath)" Outputs="$(NativeOutput)/libclone_native.a;$(NativeOutput)/libclone_native.dylib">
     <MakeDir Directories="$(NativeOutput)" />
-    <Exec Command="/usr/bin/clang -Wall -Wextra -Werror -O2 -fPIC -arch $(NativeArchitecture) -mmacosx-version-min=14.0 -c &quot;$(MSBuildThisFileDirectory)clone_native.c&quot; -o &quot;$(NativeOutput)/clone_native.o&quot;" />
+    <Exec Command="/usr/bin/clang -Wall -Wextra -Werror -O2 -fPIC -arch $(NativeArchitecture) -mmacosx-version-min=26.0 -c &quot;$(MSBuildThisFileDirectory)clone_native.c&quot; -o &quot;$(NativeOutput)/clone_native.o&quot;" />
     <Exec Command="/usr/bin/ar rcs &quot;$(NativeOutput)/libclone_native.a&quot; &quot;$(NativeOutput)/clone_native.o&quot;" />
-    <Exec Command="/usr/bin/clang -dynamiclib -arch $(NativeArchitecture) -mmacosx-version-min=14.0 &quot;$(NativeOutput)/clone_native.o&quot; -o &quot;$(NativeOutput)/libclone_native.dylib&quot;" />
+    <Exec Command="/usr/bin/clang -dynamiclib -arch $(NativeArchitecture) -mmacosx-version-min=26.0 &quot;$(NativeOutput)/clone_native.o&quot; -o &quot;$(NativeOutput)/libclone_native.dylib&quot;" />
   </Target>
   <ItemGroup Condition="$([MSBuild]::IsOSPlatform('OSX'))">
     <Content Include="$(NativeOutput)/libclone_native.dylib" Link="libclone_native.dylib" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Never" />

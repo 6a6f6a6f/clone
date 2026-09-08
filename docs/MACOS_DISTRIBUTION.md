@@ -8,9 +8,11 @@ certificate, notarization credential or installed .NET runtime is needed to
 install a compatible bottle. The historical v0.1.0 release does not contain
 these changes; no new release is published merely by merging migration PRs.
 
-The application targets macOS 14 or later. Bottles carry the actual build-host
-OS tag (`arm64_sonoma`, `arm64_sequoia` or `arm64_tahoe`); never label a newer-host
-build as an older OS. Minimum-OS and clean-machine acceptance remain required.
+The application targets macOS 26 (Tahoe), Apple Silicon only. Local acceptance
+uses macOS 26.6.2 (25G83); hosted CI uses `macos-26` and records its image build.
+Older OS versions are unsupported. Bottles carry `arm64_tahoe`; never label a newer-host
+build as an older OS. No macOS 14/15 acceptance is required. Record the actual
+host build for each remaining acceptance check.
 The project owns this source-to-bottle pipeline and its review; it is not an
 official Homebrew/core package or an assertion of Homebrew maintainer review.
 
@@ -86,7 +88,7 @@ a host with supported Xcode/CLT. The direct native checks need no .NET on PATH.
 
 ## Publication and acceptance
 
-The paused `release.yml` runs only the Homebrew channel. Its package job builds
+The manually dispatched `release.yml` runs only the Homebrew channel. Its package job builds
 from the tag and generates provenance; the publishing job requires the protected
 `release-publishing` environment. That environment requires owner approval and
 accepts `v*` tags. Self-review is allowed for the sole maintainer; this is an
@@ -97,14 +99,14 @@ identity, valid manifests and artifact attestations. It creates a draft, uploads
 the complete asset set, and checks remote names, sizes and SHA-256 digests before
 publication. It never replaces existing assets. A failure leaves any partial
 draft unpublished for inspection. A separate PR then updates `Formula/clone.rb`
-only after public release asset digests match. The workflow needs permission to
-create PRs when CI/CD is eventually activated.
+only after public release asset digests match. The workflow needs permission to create metadata PRs.
+Dispatch it on the reviewed `v<version>` tag with the matching numeric version input.
 
-Merge review and release acceptance are separate. CI/CD stays disabled during
-integration; hosted execution and the first modernization release require a
-later explicit action. See [CI_FREEZE.md](CI_FREEZE.md) and
+Merge review and release acceptance are separate. CI/CD reactivation is
+authorized for macOS 26. The release acceptance record and protected environment
+still gate publication. See [CI_FREEZE.md](CI_FREEZE.md) and
 [VALIDATION.md](VALIDATION.md). Do not mark clean-host, authenticated clone,
-minimum-OS or tampered-download acceptance passed from a local build alone.
+hosted-artifact or tampered-download acceptance passed from a local build alone.
 
 ## Deferred signed system package
 

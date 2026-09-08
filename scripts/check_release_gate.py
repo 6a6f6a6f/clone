@@ -6,7 +6,7 @@ import re
 import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
-REQUIRED = {'arm64_current_macos', 'arm64_macos_14',
+REQUIRED = {'arm64_current_macos',
             'authenticated_clone', 'homebrew_install_upgrade_uninstall',
             'tampered_bottle_rejected'}
 
@@ -14,8 +14,10 @@ REQUIRED = {'arm64_current_macos', 'arm64_macos_14',
 def check(data):
     if data.get('channel') != 'homebrew':
         raise ValueError('The release workflow accepts the Homebrew channel only.')
+    if data.get('platform', {}).get('os_major') != 26 or data.get('platform', {}).get('architecture') != 'arm64':
+        raise ValueError('Only macOS 26 on Apple Silicon is supported.')
     if data.get('ready') is not True or set(data.get('checks', {})) != REQUIRED:
-        raise ValueError('Release acceptance is outstanding; do not publish or enable CI/CD.')
+        raise ValueError('Release acceptance is outstanding; do not publish.')
     if any(result != 'passed' for result in data['checks'].values()) or not data.get('evidence'):
         raise ValueError('Every acceptance check needs passing evidence.')
     commit = data.get('reviewed_commit')

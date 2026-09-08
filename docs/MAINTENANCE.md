@@ -1,14 +1,14 @@
 # Maintenance and servicing
 
 Run `python3 scripts/check_sdk.py` to compare the pinned SDK with Microsoft's
-bounded HTTPS .NET 10 release metadata. The migration check matched SDK
-10.0.400. A failed lookup is not a passing servicing check. Review SDK updates
+bounded HTTPS .NET 10 release metadata. CI detected the September 8, 2026 security servicing release; the current
+pin is SDK 10.0.401. A failed lookup is not a passing servicing check. Review SDK updates
 alongside runtime support policy and rerun native validation after updating.
 
 GitHub Actions are pinned to upstream commit SHAs, with their reviewed release
 tags as comments. Dependabot configuration covers Actions and NuGet, but its
-version-update PR limit remains zero during the CI/CD freeze. Enable update
-proposals after the migration has been accepted and validation is available.
+version-update PR limit remains zero independently of CI activation. Enable
+update proposals when maintenance automation is requested.
 
 NuGet auditing covers direct and transitive packages, and restore warnings are
 errors. Run `dotnet list Clone.Tests/Clone.Tests.csproj package --vulnerable
