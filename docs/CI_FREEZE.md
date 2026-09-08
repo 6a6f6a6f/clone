@@ -11,7 +11,7 @@ GitHub controls image updates, so it is not an exact pin to the local Mac build.
 CI verifies formatting, builds, tests, packaging checks, Native AOT execution
 and the installed Homebrew lifecycle. PR jobs have read-only repository access.
 Actions use immutable SHA pins, with repository-level SHA pinning enabled and
-an allowlist of the six exact action revisions used by these workflows. Updating
+an allowlist of the five exact action revisions used by these workflows. Updating
 an action requires reviewing and updating that allowlist before the new run.
 
 Release automation is enabled but remains manually dispatched on a reviewed version tag.
