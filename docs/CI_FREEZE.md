@@ -10,7 +10,9 @@ The GitHub-hosted `macos-26` ARM64 runner records its actual OS version/build;
 GitHub controls image updates, so it is not an exact pin to the local Mac build.
 CI verifies formatting, builds, tests, packaging checks, Native AOT execution
 and the installed Homebrew lifecycle. PR jobs have read-only repository access.
-Actions use immutable SHA pins, with repository-level SHA pinning enabled.
+Actions use immutable SHA pins, with repository-level SHA pinning enabled and
+an allowlist of the six exact action revisions used by these workflows. Updating
+an action requires reviewing and updating that allowlist before the new run.
 
 Release automation is enabled but remains manually dispatched on a reviewed version tag.
 The selected workflow ref must equal `v` followed by the version input. The acceptance record must pass
