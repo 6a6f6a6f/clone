@@ -25,3 +25,10 @@ the Homebrew channel; signed system packages are deferred separately.
 Dependabot update proposals remain separately paused until maintenance
 automation is enabled. To stop automation again, disable repository Actions
 and both workflows; no source rollback or artifact replacement is necessary.
+
+Repository token defaults are read-only. The separate GitHub setting allowing
+Actions to create and approve PRs remains disabled: automatic approval review
+rejected that permission expansion. CI and guarded release jobs are enabled,
+but the post-publication formula-PR step needs this setting explicitly approved
+and enabled before the first release. GitHub exposes PR creation and review
+approval under the same setting; there is no creation-only repository toggle.
