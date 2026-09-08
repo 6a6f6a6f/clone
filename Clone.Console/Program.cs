@@ -1,4 +1,4 @@
-﻿if (args.Length != 1)
+if (args.Length != 1)
 {
     Printer.PrintError("You must call Router with only one command line argument!");
     Environment.Exit(1);

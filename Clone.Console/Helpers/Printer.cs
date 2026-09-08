@@ -1,4 +1,4 @@
-﻿namespace Clone.Console.Helpers;
+namespace Clone.Console.Helpers;
 
 public static class Printer
 {

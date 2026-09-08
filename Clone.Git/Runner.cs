@@ -1,4 +1,4 @@
-﻿namespace Clone.Git;
+namespace Clone.Git;
 
 /// <summary>
 /// Provides a fluent API to configure and run external processes.
