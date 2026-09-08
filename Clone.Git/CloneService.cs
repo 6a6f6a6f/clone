@@ -17,7 +17,7 @@ public static class CloneService
     {
         var remote = RemoteIdentity.Parse(request.Remote);
         if (!Enum.IsDefined(request.Layout)) throw new ArgumentException("Unknown layout.");
-        if (!Path.IsPathFullyQualified(request.Root)) throw new ArgumentException("The project root must be an absolute path.");
+        ConfigurationStore.Validate(new CloneConfiguration(request.Root, request.Layout, request.GitPath));
         return Path.Combine([Path.GetFullPath(request.Root), .. Segments(remote, request.Layout)]);
     }
 
@@ -103,6 +103,9 @@ public static class CloneService
         if (!interactive)
         {
             environment["GIT_TERMINAL_PROMPT"] = "0";
+            environment["GIT_ASKPASS"] = "/usr/bin/false";
+            environment["SSH_ASKPASS"] = "/usr/bin/false";
+            environment["SSH_ASKPASS_REQUIRE"] = "never";
             environment["GCM_INTERACTIVE"] = "never";
             environment["GIT_SSH_COMMAND"] = (Environment.GetEnvironmentVariable("GIT_SSH_COMMAND") ?? "ssh") + " -oBatchMode=yes";
         }

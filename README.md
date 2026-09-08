@@ -1,58 +1,113 @@
-# Sem ~~mais~~ bagunça
+# Clone
 
-<img src="https://raw.githubusercontent.com/6a6f6a6f/assets/main/clone.logo.png" align="right"
-     alt="clone logo by Jojo" width="120" height="120">
+A small macOS command-line tool that keeps Git checkouts organized. Clone is
+written in C# and distributed as a Native AOT executable: an installed .NET
+runtime is not required. Git is required.
 
-Eu tenho um problema muito sério de acumular uma quantidade absurda de *clones* no meu computador, e faço isso ao acaso, em diretórios aleatórios, sem nenhuma organização. Isso é um problema, pois eu não consigo encontrar nada, e acabo tendo que baixar tudo de novo. Um *fun fact* sobre isso, é que eu tenho um *storage* de 8TB — em *raid 10*, afinal de contas somos todos cultos por aqui —, e ele está quase cheio de tralhas OSS, e eu não sei o que tem nele.
+The .NET 10 migration is under review. CI/CD remains paused; **the old v0.1.0
+release does not contain these fixes**. New signed installers must pass the
+[release gates](docs/CI_FREEZE.md) before publication. See the
+[modernization tracker](https://github.com/6a6f6a6f/clone/issues/1).
 
-Eu provavelmente deveria ter olhado a documentação do Git de forma mais profunda, eu realmente não sei se isso que implementei é uma *feature*, mas como diria o profeta: Qual o sentido de ver algo que você pode gastar uma horinha para entender, se você pode gastar 100 horas para implementar algo que você não entende? Enfim, aqui vai as *features* dessa simpática ferramenta chamada `clone`:
+## Quickstart
 
-- **Nativo** (sim, [dotnet tem um AOT](https://learn.microsoft.com/en-us/dotnet/core/deploying/native-aot/)), e **sem nenhuma dependência**;
-- Salva suas tralhas OSS de forma organizada pelo `owner`; e
-- Você pode escolher o diretório que deseja salvar os projetos.
-
-No final das contas vai ficar algo assim:
-
-```plaintext
-.
-└── Projects
-    ├── user1
-    │   ├── projectA
-    │   ├── projectB
-    │   └── ...
-    ├── user2
-    │   ├── projectA
-    │   ├── projectB
-    │   └── ...
-    └── ...
+```sh
+clone --help
+clone https://github.com/owner/repository.git
+clone git@github.com:owner/repository.git
+clone --dry-run ssh://git@example.com/team/subgroup/repository.git
 ```
 
-É bem simples, mas é de coração. Eu espero que você goste.
+The default destination is `~/Projects/host/namespace/repository`. Missing
+roots are created on the first clone. No shell profile changes are required.
+HTTPS and SSH with DNS hosts or SSH aliases are supported, including nested
+namespaces and explicit ports. IPv6 literals and local paths are not currently
+supported. For authenticated repositories, configure Git/SSH credentials first;
+never embed tokens in URLs or turn off TLS/SSH verification.
 
-## Configuração
+## Configuration
 
-Literalmente existe apenas uma única configuração, que é o diretório onde você deseja salvar os seus projetos. Você pode fazer isso de um jeito bem simples, apenas criando uma variável de ambiente chamada `CLONE_PROJECT_FOLDER`, apontando para o diretório raiz onde você deseja salvar os seus projetos. Por exemplo, no meu caso, eu tenho um diretório chamado `Projectos` na raiz do meu "`$HOME`", então eu fiz o seguinte no meu `$PROFILE` do PowerShell:
-
-```powershell
-$env:CLONE_PROJECT_FOLDER="C:\Users\jojo\Projects"
+```sh
+clone config set-root "$HOME/Work Projects"
+clone config set-layout host
+clone config set-timeout 600
+clone config show
+clone doctor
 ```
 
-No Linux e no macOS, você pode fazer o mesmo, mas com um `export`, no seu `.bashrc` ou `.zshrc` (ou seja lá o que você usa):
+Settings live in `~/Library/Application Support/clone/config.json`.
+`--config-dir` selects another configuration directory for isolated usage.
+The root is chosen in this order: `--root`, `CLONE_PROJECT_FOLDER`, saved
+configuration, then `~/Projects`. An explicit `--layout` wins over saved layout.
+When `CLONE_PROJECT_FOLDER` is present and no layout is selected, Clone preserves
+the legacy `root/namespace/repository` arrangement. It never moves existing
+clones automatically. Use `--dry-run --layout host` to preview a new layout.
 
-```bash
-export CLONE_PROJECT_FOLDER="$HOME/Projects"
+Use `clone config set-git /absolute/path/to/git` for an explicit installation,
+`clone config set-timeout none` to remove a deadline, or `clone config reset`
+to reset saved settings (including malformed configuration). These commands
+never delete cloned repositories. Symlink configuration directories remain
+rejected even during reset.
+
+Project and config directories must be privately writable by their owner.
+Symlink ancestors and shared writable roots are rejected. On macOS use
+`/private/tmp` rather than the `/tmp` symlink when selecting a temporary root.
+See the precise [security model](docs/SECURITY_MODEL.md).
+
+## Automation and recovery
+
+```sh
+destination="$(clone --quiet --non-interactive --timeout 600 \
+  https://github.com/owner/repository.git)" || exit "$?"
+printf '%s\n' "$destination"
 ```
 
-E é isso. Você pode usar o `clone` sem nenhuma configuração adicional.
+Only a successful destination is written to stdout. Progress and errors go to
+stderr, without ANSI decorations (including redirected output and `NO_COLOR`
+environments). `--quiet` suppresses progress. Ctrl-C stops the owned Git process
+and cleans its staging files. A failed clone never replaces an existing clone.
+There is no default timeout; unattended jobs should specify one.
 
-## Instalação
+| Exit code | Meaning |
+| --- | --- |
+| 0 | Success, help, version, or preview |
+| 1 | Git, configuration, platform, or storage error |
+| 2 | Invalid usage or input |
+| 124 | Configured timeout expired |
+| 130 | Canceled |
 
-Basta verificar o último *release* e baixar o binário correspondente ao seu sistema operacional. Dentro do `.zip` tera o binário do `clone`, e você pode colocar ele onde quiser, e adicionar no seu `$PATH`.
+If a destination exists, Clone reports its path and, when readable, whether its
+origin matches. It does not pull, reset, or overwrite it. Missing Git or Command
+Line Tools is an actionable setup error; Clone does not install prerequisites
+silently. `doctor` checks local setup without network or credential access.
 
-## Build
+## Build and test
 
-Deixei um `Makefile` para facilitar a sua vida. Você pode usar o `make` para compilar o `clone` chamando `make publish`, e consumir o artefato gerado no respectivo destino dado o seu SO.
+Install Apple's Command Line Tools and the SDK from `global.json`.
 
-## Licença
+```sh
+make build
+make test
+make check
+make publish RID=osx-arm64
+artifacts/publish/osx-arm64/clone --version
+```
 
-Como não tenho paciência para escolher uma licença, considere a WTFPL como a licença desse projeto. Você pode fazer o que quiser com o código, e eu não me importo com nada. A única coisa que eu peço é que você não me processe se algo der errado, ou se precisar de algum suporte.
+The maintained source targets macOS 14 or later and builds for `osx-arm64` and
+`osx-x64`. Only architectures and OS versions passing the release acceptance
+matrix will be advertised for distribution. The C interop adapter is compiled
+with Clang and linked statically into Native AOT; its development dylib is only
+used by managed builds/tests. No third-party runtime NuGet package is required.
+
+For zsh completion, place `completions/_clone` in a directory on `$fpath` and
+initialize completion with `autoload -Uz compinit && compinit`. Packaging
+installs this file into its documented completion location.
+
+## Project information
+
+- [Security model](docs/SECURITY_MODEL.md)
+- [Migration plan](docs/MODERNIZATION_PLAN.md)
+- [CI/CD pause](docs/CI_FREEZE.md)
+- [Original Portuguese introduction (historical)](docs/README.pt-BR.md)
+
+Licensed under the WTFPL, as originally stated by this project. See [LICENSE](LICENSE).

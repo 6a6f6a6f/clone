@@ -231,6 +231,18 @@ public sealed class StorageTests
     }
 
     [TestMethod]
+    public async Task NoninteractiveModeSuppressesAskpassPrograms()
+    {
+        using var fixture = new Fixture();
+        var output = new List<string>();
+        var script = fixture.Script("printf '%s\\n' \"$GIT_ASKPASS\" \"$SSH_ASKPASS\" \"$SSH_ASKPASS_REQUIRE\"\nexit 128\n");
+        await Assert.ThrowsExactlyAsync<GitFailedException>(() => CloneService.CloneAsync(
+            new("https://example.com/team/repo", fixture.Root, GitPath: script, Interactive: false),
+            (line, _) => output.Add(line)));
+        CollectionAssert.AreEqual(new[] { "/usr/bin/false", "/usr/bin/false", "never" }, output);
+    }
+
+    [TestMethod]
     public async Task ProductionPolicyRejectsFileTransportRewrite()
     {
         using var fixture = new Fixture();
