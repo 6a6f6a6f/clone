@@ -1,88 +1,94 @@
-name: Release the Artifact for Multiple OS
-
+name: Publish validated Apple Silicon Homebrew bottles
 on:
   workflow_dispatch:
-
+    inputs:
+      version:
+        description: Numeric release version; its existing tag must identify reviewed code
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: macos-release
+  cancel-in-progress: false
 jobs:
-  build-and-release:
-    if: ${{ false }} # Migration freeze: keep disabled until release gates are satisfied.
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-    outputs:
-      tag: ${{ steps.extract_tag.outputs.tag }}
+  acceptance:
+    if: ${{ false }} # Migration freeze; do not remove without reviewed acceptance.
+    runs-on: macos-15
+    timeout-minutes: 10
     steps:
-    - uses: actions/checkout@v4
-
-    - name: Extract tag name
-      id: extract_tag
-      run: |
-        echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
-
-    - name: Setup dotnet SDK
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: '8.0.x'
-
-    - name: Build and Publish for Linux
-      if: matrix.os == 'ubuntu-latest'
-      run: |
-        make publish
-        mkdir -p ./bin/${{ matrix.os }}
-        mv ./Clone.Console/bin/Release/net8.0/linux-x64/publish/Clone.Console ./bin/${{ matrix.os }}/clone
-        sha256sum ./bin/${{ matrix.os }}/clone > ./bin/${{ matrix.os }}/sha256sum.txt
-
-    - name: Build and Publish for macOS
-      if: matrix.os == 'macos-latest'
-      run: |
-        make publish
-        mkdir -p ./bin/${{ matrix.os }}
-        mv ./Clone.Console/bin/Release/net8.0/osx-x64/publish/Clone.Console ./bin/${{ matrix.os }}/clone
-        shasum -a 256 ./bin/${{ matrix.os }}/clone > ./bin/${{ matrix.os }}/sha256sum.txt
-
-    - name: Build and Publish for Windows
-      if: matrix.os == 'windows-latest'
-      run: |
-        .\Publish.ps1
-        New-Item -Path .\bin\${{ matrix.os }} -ItemType Directory -Force
-        Move-Item .\Clone.Console\bin\Release\net8.0\win-x64\publish\Clone.Console.exe .\bin\${{ matrix.os }}\clone.exe
-        $hash = (Get-FileHash .\bin\${{ matrix.os }}\clone.exe -Algorithm SHA256).Hash
-        echo $hash > .\bin\${{ matrix.os }}\sha256sum.txt
-      shell: pwsh
-
-    - uses: actions/upload-artifact@v4
-      with:
-        name: ${{ matrix.os }}-release
-        path: ./bin/${{ matrix.os }}/*
-
-  upload-artifacts:
-    needs: build-and-release
-    runs-on: ubuntu-latest
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: refs/tags/v${{ inputs.version }}
+          fetch-depth: 0
+          persist-credentials: false
+      - run: python3 scripts/check_release_gate.py
+  package:
+    if: ${{ false }} # Defense in depth during the migration freeze.
+    needs: acceptance
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    runs-on: macos-15
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Download all artifacts
-      uses: actions/download-artifact@v4
-
-    - name: Zip the artifacts
-      run: |
-        zip -jr macos-latest-release.zip ./macos-latest-release
-        zip -jr ubuntu-latest-release.zip ./ubuntu-latest-release
-        zip -jr windows-latest-release.zip ./windows-latest-release
-
-    - name: Set up GitHub CLI
-      run: |
-        sudo apt update
-        sudo apt install gh -y
-
-    - name: Upload artifacts to the release
-      run: |
-        TAG_NAME=${GITHUB_REF#refs/tags/}
-        gh release create $TAG_NAME --notes "Release $TAG_NAME"
-        gh release upload "$TAG_NAME" macos-latest-release.zip --clobber
-        gh release upload "$TAG_NAME" ubuntu-latest-release.zip --clobber
-        gh release upload "$TAG_NAME" windows-latest-release.zip --clobber
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: refs/tags/v${{ inputs.version }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+      - run: make check
+      - run: python3 scripts/test_release.py
+      - name: Build source and Homebrew bottle
+        run: python3 scripts/homebrew.py prepare --version "$RELEASE_VERSION"
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: |
+            artifacts/homebrew/**/*.tar.gz
+            artifacts/homebrew/**/clone.rb
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: homebrew-osx-arm64
+          path: artifacts/homebrew/
+          if-no-files-found: error
+  publish:
+    if: ${{ false }} # Migration freeze; publication remains explicitly blocked.
+    needs: package
+    environment: release-publishing
+    runs-on: macos-15
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      attestations: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: refs/tags/v${{ inputs.version }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: homebrew-*
+          path: artifacts/downloads
+      - name: Verify attestations and publish complete draft
+        shell: bash
+        run: |
+          python3 scripts/publish_release.py \
+            "artifacts/downloads/homebrew-osx-arm64/$RELEASE_VERSION/arm64_sequoia/manifest.json"
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ inputs.version }}
+      - name: Propose verified Homebrew metadata
+        run: |
+          python3 scripts/propose_tap_update.py \
+            "artifacts/downloads/homebrew-osx-arm64/$RELEASE_VERSION/arm64_sequoia/manifest.json"
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ inputs.version }}

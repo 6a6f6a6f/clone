@@ -1,0 +1,13 @@
+{
+  "ready": false,
+  "reviewed_commit": null,
+  "checks": {
+    "arm64_current_macos": "pending",
+    "arm64_macos_14": "pending",
+    "authenticated_clone": "pending",
+    "homebrew_install_upgrade_uninstall": "pending",
+    "tampered_bottle_rejected": "pending"
+  },
+  "evidence": [],
+  "channel": "homebrew"
+}

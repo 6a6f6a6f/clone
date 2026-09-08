@@ -1,0 +1,43 @@
+#!/bin/sh
+set -eu
+
+# Never install this system package into an alternate volume or through symlinks.
+[ "${3:-/}" = / ] || { echo 'Install Clone on the startup volume only.' >&2; exit 1; }
+for path in /Library '/Library/Application Support' '/Library/Application Support/Clone' /private /private/etc /private/etc/paths.d; do
+  [ ! -L "$path" ] || { echo 'Refusing a symlink in the installation path.' >&2; exit 1; }
+  if [ -e "$path" ]; then
+    [ -d "$path" ] && [ "$(/usr/bin/stat -f %u "$path")" = 0 ] || { echo 'Installation directories must be owned by root.' >&2; exit 1; }
+    mode=$(/usr/bin/stat -f %Lp "$path")
+    [ $((0$mode & 022)) -eq 0 ] || { echo 'Installation directories must not be shared writable.' >&2; exit 1; }
+  fi
+done
+prefix='/Library/Application Support/Clone'
+if [ -e "$prefix" ]; then
+  /usr/sbin/pkgutil --pkg-info io.github.6a6f6a6f.clone >/dev/null 2>&1 || { echo 'An unmanaged Clone directory already exists; inspect it before installing.' >&2; exit 1; }
+  # Package-owned subdirectories must not redirect privileged writes.
+  for relative in bin share share/zsh share/zsh/site-functions; do
+    path="$prefix/$relative"
+    [ ! -L "$path" ] || { echo 'Refusing a symlink in an existing installation.' >&2; exit 1; }
+    if [ -e "$path" ]; then
+      [ -d "$path" ] && [ "$(/usr/bin/stat -f %u "$path")" = 0 ] || exit 1
+      mode=$(/usr/bin/stat -f %Lp "$path")
+      [ $((0$mode & 022)) -eq 0 ] || exit 1
+    fi
+  done
+fi
+
+for relative in bin/clone share/zsh/site-functions/_clone LICENSE uninstall.sh installed.sha256; do
+  path="$prefix/$relative"
+  [ ! -L "$path" ] || { echo 'Refusing to replace a package symlink.' >&2; exit 1; }
+  if [ -e "$path" ]; then
+    [ -f "$path" ] && [ "$(/usr/bin/stat -f %u "$path")" = 0 ] || exit 1
+    mode=$(/usr/bin/stat -f %Lp "$path")
+    [ $((0$mode & 022)) -eq 0 ] || exit 1
+  fi
+done
+path_entry='/private/etc/paths.d/io.github.6a6f6a6f.clone'
+[ ! -L "$path_entry" ] || exit 1
+if [ -e "$path_entry" ]; then
+  [ -f "$path_entry" ] && [ "$(/usr/bin/stat -f %u "$path_entry")" = 0 ] || exit 1
+  [ "$(cat "$path_entry")" = "$prefix/bin" ] || { echo 'The PATH entry belongs to another installation.' >&2; exit 1; }
+fi

@@ -1,9 +1,9 @@
 # Security model
 
-Clone supports normal-user operation on macOS 14 or later. It is not a sandbox
+Clone supports normal-user operation on Apple Silicon Macs with macOS 14 or later. It is not a sandbox
 for a compromised user account, an explicitly selected malicious Git binary,
-or trusted user Git/SSH configuration. Running as root is rejected. macOS Intel
-and minimum-OS runtime acceptance must be completed before advertising release
+or trusted user Git/SSH configuration. Running as root is rejected. Intel Macs are not supported.
+Minimum-OS runtime acceptance must be completed before advertising release
 support; source/build support alone is insufficient.
 
 ## Inputs and remote execution
@@ -24,7 +24,8 @@ Hooks and templates are disabled for the clone invocation; no commands from a
 new checkout are launched. User-configured filters/helpers can still run as
 part of Git's documented configuration model.
 
-In noninteractive mode, credential-manager prompts are disabled and SSH runs
+In noninteractive mode, Git and SSH askpass executables are replaced with
+`/usr/bin/false`, credential-manager prompts are disabled, and SSH runs
 with BatchMode=yes. A custom GIT_SSH_COMMAND is retained with that option
 appended; wrappers must support OpenSSH options. Otherwise normal SSH user
 configuration and agents remain available. A finite --timeout is recommended

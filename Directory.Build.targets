@@ -1,0 +1,10 @@
+<Project>
+  <Target Name="ValidateSupportedArchitecture" BeforeTargets="PrepareForBuild;BuildMacInterop;LinkNative">
+    <Error Condition="'$(RuntimeIdentifier)' != '' And '$(RuntimeIdentifier)' != 'osx-arm64'"
+           Text="Clone supports only Apple Silicon Macs (osx-arm64)." />
+    <Error Condition="$([MSBuild]::IsOSPlatform('OSX')) And '$(NETCoreSdkRuntimeIdentifier)' != 'osx-arm64'"
+           Text="Build Clone with a native Apple Silicon .NET SDK." />
+    <Error Condition="'$(NativeArchitecture)' != '' And '$(NativeArchitecture)' != 'arm64'"
+           Text="The native adapter supports only arm64." />
+  </Target>
+</Project>

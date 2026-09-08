@@ -1,0 +1,10 @@
+{
+  "channel": "signed-pkg",
+  "ready": false,
+  "status": "deferred until Apple Developer credentials are available",
+  "checks": {
+    "pkg_install_upgrade_uninstall": "pending",
+    "quarantined_signed_download": "pending"
+  },
+  "evidence": []
+}

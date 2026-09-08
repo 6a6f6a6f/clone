@@ -1,0 +1,37 @@
+# Maintenance and servicing
+
+Run `python3 scripts/check_sdk.py` to compare the pinned SDK with Microsoft's
+bounded HTTPS .NET 10 release metadata. The migration check matched SDK
+10.0.400. A failed lookup is not a passing servicing check. Review SDK updates
+alongside runtime support policy and rerun native validation after updating.
+
+GitHub Actions are pinned to upstream commit SHAs, with their reviewed release
+tags as comments. Dependabot configuration covers Actions and NuGet, but its
+version-update PR limit remains zero during the CI/CD freeze. Enable update
+proposals after the migration has been accepted and validation is available.
+
+NuGet auditing covers direct and transitive packages, and restore warnings are
+errors. Run `dotnet list Clone.Tests/Clone.Tests.csproj package --vulnerable
+--include-transitive` for the detailed report. The app has no external runtime
+NuGet package; MSTest and the Microsoft test SDK are development dependencies.
+The Native AOT runtime and local C adapter still belong in the build inventory.
+
+Git is an external runtime dependency. Review Git security advisories and
+update Homebrew Git with `brew upgrade git`, or service Apple Git through the
+supported Apple Command Line Tools/Xcode update route. Clone does not silently
+replace Git or weaken its authentication checks to work around failures.
+
+Before each release, review authentication and transport behavior, destination
+ownership, diagnostics, cancellation/resource bounds, package integrity, and
+installer/uninstaller ownership. Preserve the published artifacts and their
+provenance; never overwrite a tag or binary to hide a regression.
+
+The repository maintainer owns dependency triage: assess new advisories, record
+affected shipping versions in an issue or private security advisory as
+appropriate, upgrade or mitigate the affected input, and rerun the relevant
+checks before publishing a replacement version. Disable promotion of affected
+artifacts while a release-blocking vulnerability is unresolved.
+
+The initial native size/startup measurements and dependency inspection are
+recorded in [VALIDATION.md](VALIDATION.md). Compare equivalent hardware and
+build settings before treating those measurements as performance regressions.
