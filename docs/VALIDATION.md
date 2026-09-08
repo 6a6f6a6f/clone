@@ -14,21 +14,23 @@ repository signing secrets were provisioned.
 
 | Check | Result | Scope and limitations |
 | --- | --- | --- |
-| `make check` | Passed | Format verification, Release build with zero warnings/errors, 59 managed tests and 7 packaging tests |
+| `make check` | Passed | Format verification, Release build with zero warnings/errors, 59 managed tests and 9 packaging tests |
 | `make packaging-check` | Passed | Packaging tests, ShellCheck, zsh syntax and actionlint; only the intentional constant-false freeze warning is suppressed |
 | SDK servicing and NuGet audit | Passed | Microsoft metadata matched SDK 10.0.400; no known vulnerable resolved test packages were reported at review time |
 | ARM64 Native AOT | Passed | Standalone help/version, configuration save/load, preview and an actual public HTTPS clone; no development dylib required |
-| Architecture restrictions | Passed | MSBuild rejected `osx-x64` and an `x86_64` adapter override; packaging rejected Intel; the Apple Silicon Cask lifecycle passed |
+| Architecture restrictions | Passed | MSBuild rejected `osx-x64` and an `x86_64` adapter override; packaging rejected Intel; the Apple Silicon bottle lifecycle passed |
 | Native dependency inspection | Passed locally | `otool -L` on the ARM64 binary listed only Apple system libraries/frameworks; no Homebrew or development library paths |
 | Development archives and packages | Passed locally | The ARM64 package built; archive modes/payload and expanded `.pkg` contents inspected; system package installation was not performed |
-| Isolated Homebrew lifecycle | Passed for payloads | Install, upgrade 0.2.0 to 0.2.1, reinstall and uninstall verified exact binary/completion bytes and cleaned the isolated tap/links |
-| Quarantined unsigned Cask execution | Did not pass | The unsigned fixture terminated without version output; quarantine was preserved and no Gatekeeper bypass was attempted |
-| Production signing/notarization/provenance | Pending | Workflow and validation code exist; real Apple credentials and signed artifact acceptance are required |
+| Isolated Homebrew lifecycle | Passed | Install, tampered-upgrade rejection with old-version preservation, upgrade 0.2.0 to 0.2.1, reinstall and uninstall; actual native execution without .NET on PATH; dependency changes skipped; fixture keg-only |
+| Historical Cask approach | Replaced | The unsigned quarantined Cask did not execute; the active channel now uses source-built Homebrew bottles |
+| Homebrew provenance | Pending hosted release | The paused workflow attests source, bottle and formula; publication verifies remote digests |
+| Signed system package | Deferred | Requires future Apple credentials and independent package acceptance |
 | Hosted CI/CD | Paused | Repository Actions disabled; release workflow manually disabled; source workflows manual-only with unconditional false guards |
 
-The Homebrew fixture deliberately uses separate command/completion names and
-does not execute a quarantined unsigned binary. This establishes local package
-management behavior, not the signed installed experience.
+Homebrew bottle execution does not require an Apple Developer certificate.
+The optional `brew test` runner was blocked by the locally installed Xcode 16.4
+minimum-version check; direct installed-binary verification is recorded
+separately. No Xcode installation or Gatekeeper setting was changed.
 
 Native startup observations below use ten sequential `--version` subprocess
 invocations after a warm-up. They include process launch overhead and are not
@@ -41,17 +43,15 @@ a cold-start benchmark or a release performance guarantee.
 ## Installed-experience acceptance still required
 
 Use disposable clean Macs/VMs without .NET. Cover Apple Silicon
-on macOS 14 and the current supported macOS, for both distribution
-channels. Record OS/build, architecture, source commit, Git version, artifact
+on macOS 14 and the current supported macOS, for the Homebrew bottle
+channel. Track the signed system-package channel separately. Record OS/build, architecture, source commit, Git version, artifact
 SHA-256, signature identity, commands and outcomes without credentials.
 
-1. Verify each downloaded artifact's checksum, provenance and Developer ID
-   signature. Test a quarantined signed download without removing quarantine.
-   Tampered archives/packages must be rejected before installation or execution.
-2. Exercise Homebrew install/upgrade/reinstall/uninstall and package GUI plus
-   `installer` install/upgrade/uninstall. Confirm command discovery in a fresh
-   login shell and completion setup. Check existing command collisions and
-   coexistence of Homebrew/package ownership.
+1. Verify each downloaded bottle's checksum, provenance and ad hoc integrity
+   signature. Tampered downloads must be rejected before replacing an installed
+   version. Apple Developer ID identity is not part of this channel.
+2. Exercise Homebrew install/upgrade/reinstall/uninstall. Confirm command discovery in a fresh
+   login shell and completion setup. Check existing command collisions and normal shell command/completion links.
 3. Start without Git and verify an actionable diagnostic; install an approved
    Git and run `clone doctor`. Exercise first use without saved configuration,
    then saved configuration, explicit overrides and legacy layout selection.
@@ -65,8 +65,7 @@ SHA-256, signature identity, commands and outcomes without credentials.
    installed version remains usable or document and resolve the recovery
    defect before acceptance. Verify failed hashes/signatures do not replace it.
 7. Confirm upgrade, rollback and uninstall preserve user configuration and
-   cloned repositories. Test modified package files and symlink collisions:
-   uninstall/install must stop safely rather than remove unrelated data.
+   cloned repositories. Verify unrelated paths and symlink collisions are not overwritten.
 
 Attach the results to issue #22, then review every entry in
 `.github/release-acceptance.json`. Keep pending entries pending until the actual

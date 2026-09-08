@@ -1,4 +1,4 @@
-name: Sign and publish validated macOS artifacts
+name: Publish validated Apple Silicon Homebrew bottles
 on:
   workflow_dispatch:
     inputs:
@@ -26,7 +26,6 @@ jobs:
   package:
     if: ${{ false }} # Defense in depth during the migration freeze.
     needs: acceptance
-    environment: release-signing
     timeout-minutes: 60
     permissions:
       contents: read
@@ -44,35 +43,20 @@ jobs:
           global-json-file: global.json
       - run: make check
       - run: python3 scripts/test_release.py
-      - name: Prepare ephemeral signing credentials
-        run: python3 scripts/signing_keychain.py setup
-        env:
-          APPLE_APP_CERT_BASE64: ${{ secrets.APPLE_APP_CERT_BASE64 }}
-          APPLE_INSTALLER_CERT_BASE64: ${{ secrets.APPLE_INSTALLER_CERT_BASE64 }}
-          APPLE_CERT_PASSWORD: ${{ secrets.APPLE_CERT_PASSWORD }}
-          APPLE_NOTARY_KEY_BASE64: ${{ secrets.APPLE_NOTARY_KEY_BASE64 }}
-          APPLE_NOTARY_KEY_ID: ${{ secrets.APPLE_NOTARY_KEY_ID }}
-          APPLE_NOTARY_ISSUER_ID: ${{ secrets.APPLE_NOTARY_ISSUER_ID }}
-      - name: Build, sign, notarize and package
-        run: python3 scripts/release.py prepare --version "$RELEASE_VERSION" --rid "$RID"
+      - name: Build source and Homebrew bottle
+        run: python3 scripts/homebrew.py prepare --version "$RELEASE_VERSION"
         env:
           RELEASE_VERSION: ${{ inputs.version }}
-          RID: osx-arm64
-          CLONE_APP_IDENTITY: ${{ secrets.APPLE_APP_IDENTITY }}
-          CLONE_INSTALLER_IDENTITY: ${{ secrets.APPLE_INSTALLER_IDENTITY }}
       - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
           subject-path: |
-            artifacts/release/**/*.tar.gz
-            artifacts/release/**/*.pkg
+            artifacts/homebrew/**/*.tar.gz
+            artifacts/homebrew/**/clone.rb
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: signed-osx-arm64
-          path: artifacts/release/
+          name: homebrew-osx-arm64
+          path: artifacts/homebrew/
           if-no-files-found: error
-      - name: Remove signing material
-        if: ${{ always() }}
-        run: python3 scripts/signing_keychain.py cleanup
   publish:
     if: ${{ false }} # Migration freeze; publication remains explicitly blocked.
     needs: package
@@ -91,20 +75,20 @@ jobs:
           persist-credentials: false
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          pattern: signed-*
+          pattern: homebrew-*
           path: artifacts/downloads
       - name: Verify attestations and publish complete draft
         shell: bash
         run: |
           python3 scripts/publish_release.py \
-            "artifacts/downloads/signed-osx-arm64/$RELEASE_VERSION/osx-arm64/manifest.json"
+            "artifacts/downloads/homebrew-osx-arm64/$RELEASE_VERSION/arm64_sequoia/manifest.json"
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_VERSION: ${{ inputs.version }}
       - name: Propose verified Homebrew metadata
         run: |
           python3 scripts/propose_tap_update.py \
-            "artifacts/downloads/signed-osx-arm64/$RELEASE_VERSION/osx-arm64/manifest.json"
+            "artifacts/downloads/homebrew-osx-arm64/$RELEASE_VERSION/arm64_sequoia/manifest.json"
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_VERSION: ${{ inputs.version }}

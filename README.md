@@ -5,15 +5,15 @@ written in C# and distributed as a Native AOT executable: an installed .NET
 runtime is not required. Git is required.
 
 The .NET 10 migration is under review. CI/CD remains paused; **the old v0.1.0
-release does not contain these fixes**. New signed installers must pass the
+release does not contain these fixes**. New distribution artifacts must pass the
 [release gates](docs/CI_FREEZE.md) before publication. See the
 [modernization tracker](https://github.com/6a6f6a6f/clone/issues/1).
 
 ## Installation
 
-See [macOS distribution](docs/MACOS_DISTRIBUTION.md) for the Homebrew Cask and
-signed package channels, update/uninstall commands, and their current acceptance
-gates. The migration has not published a new signed release yet.
+See [macOS distribution](docs/MACOS_DISTRIBUTION.md) for the Homebrew formula/bottle channel and
+deferred signed package channel, update/uninstall commands, and their current acceptance
+gates. The migration has not published a new modernization release yet.
 
 ## Quickstart
 

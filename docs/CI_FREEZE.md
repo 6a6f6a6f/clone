@@ -6,9 +6,11 @@ The previous repository setting was `enabled: true`, `allowed_actions: all`,
 `sha_pinning_required: false`.
 
 All migration PRs use local validation. Keep new workflows manual-only with an
-unconditional false job guard. Do not trigger, merge, tag, publish a release,
-or enable Actions as an incidental validation step. PRs remain drafts while
-migration-wide acceptance gates are outstanding.
+unconditional false job guard. The owner authorized review and sequential
+merges of the migration PRs into main before activation. Mark a reviewed PR
+ready and integrate it after its local checks pass; keep release acceptance
+separate. Do not trigger workflows, create a release tag, publish a release,
+or enable Actions as an incidental merge or validation step.
 
 After the migration has been reviewed and the documented release gates pass,
 reactivation is a separate explicit operation: restore repository Actions

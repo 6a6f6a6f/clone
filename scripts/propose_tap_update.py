@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Open a cask metadata PR only after the corresponding verified release is public."""
+"""Open a formula metadata PR only after the corresponding verified release is public."""
 import argparse
 import base64
 import json
@@ -7,7 +7,7 @@ from pathlib import Path
 import subprocess
 import tempfile
 
-from release import homebrew_cask, validate_manifest
+from homebrew import validate as validate_manifest
 
 REPOSITORY = '6a6f6a6f/clone'
 
@@ -25,8 +25,10 @@ def propose(manifests):
     with tempfile.TemporaryDirectory(prefix='clone-tap-') as temporary:
         temporary = Path(temporary)
         generated = temporary / 'clone.rb'
-        homebrew_cask(manifests, generated)
+        if len(manifests) != 1:
+            raise ValueError('Exactly one verified Homebrew manifest is required.')
         entries = [validate_manifest(Path(path)) for path in manifests]
+        generated.write_bytes((Path(manifests[0]).parent / 'clone.rb').read_bytes())
         release_version = entries[0]['version']
         published = api(f'repos/{REPOSITORY}/releases/tags/v{release_version}')
         if published['draft'] or not published['published_at']:
@@ -39,19 +41,19 @@ def propose(manifests):
         branch = 'build/homebrew-v' + release_version
         base = api(f'repos/{REPOSITORY}/git/ref/heads/main')['object']['sha']
         api(f'repos/{REPOSITORY}/git/refs', {'ref': 'refs/heads/' + branch, 'sha': base})
-        existing = subprocess.run(['gh', 'api', f'repos/{REPOSITORY}/contents/Casks/clone.rb?ref=main'], capture_output=True, text=True)
-        payload = {'message': 'build(homebrew): publish Clone ' + release_version + ' cask',
+        existing = subprocess.run(['gh', 'api', f'repos/{REPOSITORY}/contents/Formula/clone.rb?ref=main'], capture_output=True, text=True)
+        payload = {'message': 'build(homebrew): publish Clone ' + release_version + ' formula',
                    'branch': branch, 'content': base64.b64encode(generated.read_bytes()).decode()}
         if existing.returncode == 0:
             payload['sha'] = json.loads(existing.stdout)['sha']
         elif 'HTTP 404' not in existing.stderr:
             raise ValueError('Could not inspect existing tap metadata.')
-        subprocess.run(['gh', 'api', '--method', 'PUT', f'repos/{REPOSITORY}/contents/Casks/clone.rb', '--input', '-'],
+        subprocess.run(['gh', 'api', '--method', 'PUT', f'repos/{REPOSITORY}/contents/Formula/clone.rb', '--input', '-'],
                        input=json.dumps(payload), text=True, check=True, stdout=subprocess.DEVNULL)
         body = temporary / 'body.md'
         body.write_text(f'''## Summary
 
-Publish the verified Homebrew cask for Clone {release_version}. Addresses #20.
+Publish the verified Homebrew formula for Clone {release_version}. Addresses #20.
 
 ## Motivation
 
@@ -66,7 +68,7 @@ Make the public Apple Silicon binaries installable and upgradable through the pr
 
 - The Apple Silicon manifest passed integrity and production-state validation.
 - Public release asset digests match the validated artifacts.
-- Cask links the signed CLI and zsh completion without running downloaded setup scripts.
+- Formula installs the source-built CLI and zsh completion without running downloaded setup scripts.
 - Review the release acceptance evidence before merging this metadata update.
 
 ## Risks
@@ -75,7 +77,7 @@ This changes the version installed by new Homebrew installations and upgrades. U
 
 ## Security Considerations
 
-Uses versioned URLs and fixed hashes; it never downloads an unsigned development artifact.
+Uses versioned URLs and fixed hashes; production publication rejects development manifests. Bottle provenance binds artifacts to the reviewed source commit.
 
 ## Migration Notes
 
@@ -83,10 +85,10 @@ After merging, users can tap this repository and install or upgrade 6a6f6a6f/clo
 
 ## Rollback Plan
 
-Revert the cask metadata commit to restore the previous install target; preserve the immutable release assets.
+Revert the formula metadata commit to restore the previous install target; preserve the immutable release assets.
 ''')
         subprocess.run(['gh', 'pr', 'create', '--repo', REPOSITORY, '--base', 'main', '--head', branch,
-                        '--title', 'build(homebrew): publish Clone ' + release_version + ' cask', '--body-file', str(body)], check=True)
+                        '--title', 'build(homebrew): publish Clone ' + release_version + ' formula', '--body-file', str(body)], check=True)
 
 
 if __name__ == '__main__':

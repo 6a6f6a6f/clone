@@ -4,7 +4,7 @@ DOTNET ?= dotnet
 RID ?= osx-arm64
 export CLONE_BUILD_RID := $(RID)
 
-.PHONY: all restore build publish clean test format check package-dev packaging-check
+.PHONY: all restore build publish clean test format check package-dev bottle-dev packaging-check
 all: build
 restore:
 	$(DOTNET) restore $(SOLUTION)
@@ -33,3 +33,6 @@ packaging-check:
 	shellcheck packaging/macos/preinstall packaging/macos/uninstall.sh
 	actionlint -ignore 'constant expression "false" in condition' .github/workflows/*.yml
 	zsh -n completions/_clone
+
+bottle-dev:
+	python3 scripts/homebrew.py prepare --version "$$CLONE_BUILD_VERSION" --development

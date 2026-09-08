@@ -18,12 +18,10 @@ jobs:
       - run: python3 scripts/check_sdk.py
       - run: make check
       - run: python3 scripts/test_release.py
-      - run: python3 scripts/release.py prepare --version 0.2.0 --rid "$RID" --development
-        env:
-          RID: osx-arm64
+      - run: python3 scripts/homebrew.py prepare --version 0.2.0 --development
       - run: dotnet list Clone.Tests/Clone.Tests.csproj package --vulnerable --include-transitive
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: development-osx-arm64
-          path: artifacts/release/
+          path: artifacts/homebrew/
           if-no-files-found: error

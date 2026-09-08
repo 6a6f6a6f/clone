@@ -7,7 +7,8 @@ import subprocess
 import tempfile
 
 from check_release_gate import check
-from release import ROOT, homebrew_cask, validate_manifest, verify_tag, version
+from homebrew import ROOT, validate as validate_manifest
+from release import digest, verify_tag, version
 
 REPOSITORY = '6a6f6a6f/clone'
 
@@ -40,28 +41,25 @@ def publish(manifests):
             assets.append(asset)
     with tempfile.TemporaryDirectory(prefix='clone-release-') as temporary:
         temporary = Path(temporary)
-        cask_path = temporary / 'clone.rb'
-        homebrew_cask(manifests, cask_path)
-        assets.append(cask_path)
         sums = temporary / 'SHA256SUMS'
         sums.write_text(''.join(f'{checksum}  {name}\n' for entry in entries for name, checksum in entry['files'].items()))
         assets.append(sums)
         notes = temporary / 'notes.md'
         notes.write_text(f'Clone {release_version} for Apple Silicon Macs running macOS 14 and later.\n\n'
                          'Includes the secure clone core, first-use configuration, Homebrew metadata, '
-                         'and signed/notarized native installers.\n\n'
+                         'and source-built Homebrew bottles. No Apple certificate or installed .NET runtime is required for bottled installation.\n\n'
                          'Verify SHA256SUMS and GitHub artifact attestations before direct use. '
-                         'See the installation and rollback documentation in the repository.\n')
+                         'This release does not contain the deferred signed system package. See the installation and rollback documentation in the repository.\n')
         # No --clobber and no reuse of an existing release: retries must inspect a partial draft.
         gh('release', 'create', tag, '--repo', REPOSITORY, '--draft', '--verify-tag', '--title',
            'feat(release): ship Clone ' + release_version + ' for macOS', '--notes-file', notes)
         gh('release', 'upload', tag, *assets, '--repo', REPOSITORY)
-        remote = json.loads(gh('release', 'view', tag, '--repo', REPOSITORY, '--json', 'assets,isDraft', capture=True))
-        expected = {asset.name: asset.stat().st_size for asset in assets}
-        if not remote['isDraft'] or {asset['name']: asset['size'] for asset in remote['assets']} != expected:
+        remote = json.loads(gh('api', f'repos/{REPOSITORY}/releases/tags/{tag}', capture=True))
+        expected = {asset.name: (asset.stat().st_size, 'sha256:' + digest(asset)) for asset in assets}
+        if not remote['draft'] or {asset['name']: (asset['size'], asset.get('digest')) for asset in remote['assets']} != expected:
             raise ValueError('Draft upload is incomplete; the draft was not published.')
         gh('release', 'edit', tag, '--repo', REPOSITORY, '--draft=false', '--latest')
-        print('Release published. Promote clone.rb to the tap through a reviewed metadata PR.')
+        print('Release published. Promote Formula/clone.rb to the tap through a reviewed metadata PR.')
 
 
 if __name__ == '__main__':

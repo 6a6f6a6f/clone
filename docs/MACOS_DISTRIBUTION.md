@@ -1,175 +1,123 @@
-# macOS installation and release operations
+# Apple Silicon Homebrew distribution
 
-## Availability
+## Availability and scope
 
-The migration artifacts are under review. The historical v0.1.0 release does
-not contain these changes. Unsigned files with `-development` in their names
-are local validation artifacts and cannot pass the production release gate.
-Do not distribute them as signed/notarized releases.
+The first modernization release uses a project-owned Homebrew formula and
+source-built ARM64 bottles. Intel is unsupported. No Apple Developer ID
+certificate, notarization credential or installed .NET runtime is needed to
+install a compatible bottle. The historical v0.1.0 release does not contain
+these changes; no new release is published merely by merging migration PRs.
 
-The target is Apple Silicon Macs running macOS 14 or later (`osx-arm64`).
-Intel Macs are not supported. Build checks do not replace acceptance on the
-minimum OS. The authoritative outstanding matrix is
-[release-acceptance.json](../.github/release-acceptance.json).
+The application targets macOS 14 or later. Bottles carry the actual build-host
+OS tag (`arm64_sonoma`, `arm64_sequoia` or `arm64_tahoe`); never label a newer-host
+build as an older OS. Minimum-OS and clean-machine acceptance remain required.
+The project owns this source-to-bottle pipeline and its review; it is not an
+official Homebrew/core package or an assertion of Homebrew maintainer review.
 
-## Homebrew channel
+## Install, upgrade and remove
 
-After a signed release is published and its generated Cask metadata PR is
-merged, this repository itself is the project-owned tap:
+After a verified release and its generated `Formula/clone.rb` metadata PR are
+published and merged:
 
 ```sh
 brew tap 6a6f6a6f/clone https://github.com/6a6f6a6f/clone.git
-brew install --cask 6a6f6a6f/clone/clone
+brew install --formula 6a6f6a6f/clone/clone
 clone --version
 clone doctor
-brew upgrade --cask 6a6f6a6f/clone/clone
-brew reinstall --cask 6a6f6a6f/clone/clone
-brew uninstall --cask 6a6f6a6f/clone/clone
+brew upgrade --formula 6a6f6a6f/clone/clone
+brew reinstall --formula 6a6f6a6f/clone/clone
+brew uninstall --formula 6a6f6a6f/clone/clone
 ```
 
-The Cask selects a versioned native archive and a fixed SHA-256 for Apple Silicon,
-links the CLI and zsh completion, requires Apple Silicon, and declares Git as a dependency. It does not
-compile Clone or require the .NET SDK. Cask delivery was selected because a
-formula installation unnecessarily entered Homebrew's source-build toolchain
-checks on the reviewed host. It uses Homebrew's normal quarantine handling.
+Homebrew manages command/completion links and declares Git as a runtime
+prerequisite. It installs a compatible bottle automatically. Source fallback
+needs the SDK selected by `global.json` and supported Apple Command Line Tools.
+The formula declares Homebrew `dotnet` as a build-only dependency; if that SDK
+no longer satisfies the pinned feature band, service the formula/source inputs
+before advertising source fallback. The SDK is not needed for bottled execution.
 
-Uninstall removes only Homebrew-managed application files and links. No `zap`
-stanza removes configuration or repositories. Existing unrelated commands
-must not be overwritten with `--force`; resolve an installation collision
-explicitly. Homebrew owns its own install/upgrade rollback behavior; test failed
-upgrades in the release acceptance environment as well as successful upgrades.
+Installation does not edit shell profiles or require running Clone with sudo.
+Do not overwrite unrelated command collisions with `--force`. Uninstall never
+removes user configuration or repositories. Homebrew may update dependencies;
+review its proposed changes. Keep an older verified bottle and formula metadata
+for a reviewed rollback, without replacing immutable release assets.
 
-## Standalone package channel
-
-Choose the Apple Silicon `.pkg` from a validated release. Verify its
-published SHA-256, GitHub provenance, and Developer ID signature before use.
-Open the package in Installer, or run:
-
-```sh
-sudo installer -pkg ./clone-VERSION-osx-arm64.pkg -target /
-```
-
-Replace `VERSION` with the exact release version. The installer rejects other architectures.
-The package installs into `/Library/Application Support/Clone`, with package
-identifier `io.github.6a6f6a6f.clone`. A file under `/private/etc/paths.d` makes
-its `bin` directory visible to a new login shell. Normal cloning requires no
-administrator privileges. Start a new Terminal session after installation.
-
-To enable the package's zsh completion, add its completion directory to `$fpath`
-in your own shell configuration before calling `compinit`:
-
-```sh
-fpath=("/Library/Application Support/Clone/share/zsh/site-functions" $fpath)
-autoload -Uz compinit && compinit
-```
-
-The package never edits shell profiles, overwrites Homebrew-owned files, or
-performs privileged network downloads. Install a newer signed package for an
-update, or an earlier verified package for an explicit rollback. Both preserve
-user configuration and cloned repositories. If both channels are installed,
-normal PATH order decides which CLI runs; use `command -v clone` to inspect it.
-
-Remove the package with its guarded helper:
-
-```sh
-sudo "/Library/Application Support/Clone/uninstall.sh"
-```
-
-The helper requires the package receipt, private root-owned directories, the
-fixed expected payload, and matching installed-file hashes before deletion.
-Unexpected or modified files cause a stop for manual inspection. Unknown extra
-files are preserved, and nonempty directories are not recursively deleted.
-The helper never deletes `~/Projects` or the user's configuration. Missing Git
-must be resolved separately using an approved Git/Command Line Tools install.
-
-## Local artifact creation
+## Source and bottle production
 
 ```sh
 make check
 make packaging-check
-python3 scripts/check_sdk.py
-make package-dev RID=osx-arm64 VERSION=0.2.0
-python3 scripts/release.py verify \
-  artifacts/release/0.2.0/osx-arm64/manifest.json --development
+make bottle-dev VERSION=0.2.0
+make bottle-dev VERSION=0.2.1
+python3 scripts/homebrew.py verify \
+  artifacts/homebrew/0.2.0/arm64_tahoe/manifest.json --development
+python3 scripts/test_homebrew.py \
+  artifacts/homebrew/0.2.0/arm64_tahoe/manifest.json \
+  artifacts/homebrew/0.2.1/arm64_tahoe/manifest.json
 ```
 
-Outputs are never overwritten. Preserve or explicitly remove an earlier local
-output before reusing its version. All packaging requires a native Apple Silicon host. No local development
-command creates a Git tag, signs with an invented identity, or publishes assets.
+Use the tag matching the actual host. Outputs are not overwritten. Development
+manifests cannot pass production publication. Production packaging requires a
+clean checkout at the matching existing version tag and the pinned SDK.
 
-The package builder validates the version, architecture, native version output,
-asset set, checksums, and manifest types. Test archive extraction and package
-payload inspection separately from actual Installer execution on a clean VM.
-Package installation, interrupted-update recovery, fresh-shell PATH discovery,
-and privileged uninstall require the clean-machine acceptance gate.
+`homebrew.py` snapshots the shipping source, restores/audits its exact NuGet
+build inputs into a private cache, then builds offline against that cache.
+The source archive includes those packages and disables network package feeds;
+its formula build disables online audit only because audit already occurred
+when the checksummed source snapshot was prepared. SDK/runtime/package updates
+require a new source archive, bottle and validation. No secrets or user caches
+are copied into the archive.
 
-## Production signing and publication
+The native executable receives an ad hoc integrity signature, which requires
+no Apple certificate and does not identify an Apple-verified publisher. The
+builder checks architecture, signature and native version output, then creates
+Homebrew's documented keg/receipt/formula bottle layout. Downloads use immutable
+version URLs and SHA-256. Source archive, bottle and generated formula are all
+bound to the reviewed commit through GitHub artifact attestations at release.
+The formula is regenerated and compared during manifest validation.
 
-Production packaging requires a clean checkout at the matching existing tag,
-Developer ID Application and Installer identities, and a `notarytool` keychain
-profile. `CLONE_APP_IDENTITY`, `CLONE_INSTALLER_IDENTITY`, and
-`CLONE_NOTARY_PROFILE` select them. `CLONE_SIGNING_KEYCHAIN` optionally selects
-an isolated keychain without modifying the user's keychain search list.
+The lifecycle harness creates an isolated keg-only test formula, verifies
+installed binary bytes, version and preview, rejects a tampered upgrade while preserving the previous executable,
+upgrades/reinstalls, and removes
+its own fixture. It skips dependency changes to avoid upgrading unrelated local
+packages. Dependency resolution and normal command linking still need clean-host
+acceptance. `--brew-test` additionally runs Homebrew's developer test command on
+a host with supported Xcode/CLT. The direct native checks need no .NET on PATH.
 
-The paused release workflow references `release-signing` and
-`release-publishing` environments. Both were configured on September 8, 2026
-with `6a6f6a6f` as required reviewer and a `v*` tag-only deployment policy.
-Self-review remains allowed for the sole maintainer; this is an explicit
-approval checkpoint, not independent two-person review. Recheck these settings
-before reactivation and configure the following secrets through GitHub's
-secret settings:
+## Publication and acceptance
 
-- `APPLE_APP_CERT_BASE64`, `APPLE_INSTALLER_CERT_BASE64`, `APPLE_CERT_PASSWORD`
-- `APPLE_NOTARY_KEY_BASE64`, `APPLE_NOTARY_KEY_ID`, `APPLE_NOTARY_ISSUER_ID`
-- `APPLE_APP_IDENTITY`, `APPLE_INSTALLER_IDENTITY`
+The paused `release.yml` runs only the Homebrew channel. Its package job builds
+from the tag and generates provenance; the publishing job requires the protected
+`release-publishing` environment. That environment requires owner approval and
+accepts `v*` tags. Self-review is allowed for the sole maintainer; this is an
+explicit approval checkpoint, not independent two-person review.
 
-Never paste those values into an issue or log. `signing_keychain.py` uses an
-isolated ephemeral keychain, suppresses credential-bearing subprocess output,
-and has an always-run cleanup step. Review certificate expiry and permissions.
+Publication requires `.github/release-acceptance.json`, matching source/tag
+identity, valid manifests and artifact attestations. It creates a draft, uploads
+the complete asset set, and checks remote names, sizes and SHA-256 digests before
+publication. It never replaces existing assets. A failure leaves any partial
+draft unpublished for inspection. A separate PR then updates `Formula/clone.rb`
+only after public release asset digests match. The workflow needs permission to
+create PRs when CI/CD is eventually activated.
 
-The workflow builds and tests on Apple Silicon, signs the executable and
-package, submits a ZIP of the signed executable and the package to Apple,
-staples the package, and verifies the final files. The public tar archive
-contains that same signed executable; a bare executable/tar archive cannot be
-stapled like a package. Test the real downloaded/quarantined artifact.
+Merge review and release acceptance are separate. CI/CD stays disabled during
+integration; hosted execution and the first modernization release require a
+later explicit action. See [CI_FREEZE.md](CI_FREEZE.md) and
+[VALIDATION.md](VALIDATION.md). Do not mark clean-host, authenticated clone,
+minimum-OS or tampered-download acceptance passed from a local build alone.
 
-Build jobs produce provenance. Publication verifies artifact hashes and GitHub
-attestations for this repository, workflow and source commit. It creates a draft,
-uploads the entire asset set without `--clobber`, verifies the remote inventory,
-and only then publishes. A partial draft stays unpublished for inspection;
-retries do not silently replace existing assets.
+## Deferred signed system package
 
-The publication workflow then proposes `Casks/clone.rb` through a separate PR,
-using only a public release whose server-side digests match the validated
-manifests. No tap metadata or release is published while migration gates remain
-outstanding. The generated metadata file is also attached to the release.
-The tap proposal requires GitHub Actions to be permitted to create PRs; configure
-that separately at reactivation, rather than broadening permissions mid-migration.
+The signed `.pkg` channel is deferred until Apple Developer ID Application and
+Installer identities plus notarization credentials are available. Its status is
+tracked separately in `.github/pkg-acceptance.json`; it does not block Homebrew.
+The optional `scripts/release.py prepare` package builder and guarded payload
+remain available for future validation. They are not called by the Brew release
+workflow and an unsigned development package is not a supported user download.
 
-## Release acceptance
-
-Record evidence for every check in `release-acceptance.json` and set a reviewed
-source commit only after the results are assessed. `check_release_gate.py`
-rejects incomplete evidence and shipping/validation changes after that commit.
-A review-only change to the acceptance record may follow the tested commit.
-Do not claim clean-machine, authenticated or notarized results from managed
-tests or development packages.
-See [VALIDATION.md](VALIDATION.md) for the local evidence and the remaining
-installed-experience procedure.
-
-Keep repository Actions disabled, workflows manual-only and false-guarded,
-and Dependabot version-update PR limits at zero until the migration is ready.
-See [CI_FREEZE.md](CI_FREEZE.md). Reactivation is separate from code publication.
-
-For a local Homebrew lifecycle fixture, first build two distinct development
-versions for the current architecture, then run:
-
-```sh
-python3 scripts/test_homebrew.py --from-version 0.2.0 --to-version 0.2.1
-```
-
-The test refuses existing fixtures, uses separate command/completion names,
-checks exact installed payloads across install/upgrade/reinstall, then removes
-the Cask and tap. It preserves quarantine and does not execute the quarantined
-unsigned fixture. Native execution after installation remains a signed-release
-acceptance test, not a reason to remove platform protections.
+That package uses `/Library/Application Support/Clone`, a private
+`/private/etc/paths.d/io.github.6a6f6a6f.clone` entry and receipt
+`io.github.6a6f6a6f.clone`. It never overwrites Homebrew files. The uninstall helper
+checks ownership and expected payload hashes and removes only its own files.
+GUI/privileged install, fresh-shell discovery, interrupted-update recovery,
+quarantine, signing and notarization remain unvalidated production gates.

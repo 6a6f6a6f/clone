@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fail closed until the complete distribution acceptance matrix is reviewed."""
+"""Fail closed until the Homebrew distribution acceptance matrix is reviewed."""
 import json
 from pathlib import Path
 import re
@@ -8,10 +8,12 @@ import subprocess
 ROOT = Path(__file__).resolve().parents[1]
 REQUIRED = {'arm64_current_macos', 'arm64_macos_14',
             'authenticated_clone', 'homebrew_install_upgrade_uninstall',
-            'pkg_install_upgrade_uninstall', 'quarantined_signed_download'}
+            'tampered_bottle_rejected'}
 
 
 def check(data):
+    if data.get('channel') != 'homebrew':
+        raise ValueError('The release workflow accepts the Homebrew channel only.')
     if data.get('ready') is not True or set(data.get('checks', {})) != REQUIRED:
         raise ValueError('Release acceptance is outstanding; do not publish or enable CI/CD.')
     if any(result != 'passed' for result in data['checks'].values()) or not data.get('evidence'):

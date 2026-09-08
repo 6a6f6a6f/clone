@@ -5,6 +5,7 @@ import tempfile
 import unittest
 
 import release
+import homebrew
 from check_release_gate import check
 
 
@@ -59,22 +60,49 @@ class ReleaseTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 release.validate_manifest(path)
 
-    def test_cask_requires_one_apple_silicon_manifest(self):
+    def homebrew_fixture(self, root):
+        data = {'channel': 'homebrew', 'version': '0.2.0', 'rid': 'osx-arm64',
+                'bottle_tag': 'arm64_tahoe', 'commit': 'a' * 40, 'development': False,
+                'native_smoke': True, 'files': {}}
+        for name in ['clone-0.2.0-source.tar.gz', 'clone-0.2.0.arm64_tahoe.bottle.tar.gz']:
+            (root / name).write_bytes(b'fixture')
+            data['files'][name] = release.digest(root / name)
+        (root / 'clone.rb').write_text(homebrew.formula('0.2.0', data['files']['clone-0.2.0-source.tar.gz'],
+            data['files']['clone-0.2.0.arm64_tahoe.bottle.tar.gz'], 'arm64_tahoe'))
+        data['files']['clone.rb'] = release.digest(root / 'clone.rb')
+        path = root / 'manifest.json'
+        path.write_text(json.dumps(data))
+        return path, data
+
+    def test_homebrew_does_not_require_apple_signing(self):
         with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            arm, _ = self.fixture(root)
-            release.homebrew_cask([arm], root / 'clone.rb')
-            text = (root / 'clone.rb').read_text()
+            path, _ = self.homebrew_fixture(Path(directory))
+            homebrew.validate(path)
+            text = (path.parent / 'clone.rb').read_text()
             self.assertIn('depends_on arch: :arm64', text)
-            self.assertNotIn('on_intel', text)
+            self.assertIn('bottle do', text)
+            self.assertNotIn('cask ', text)
             self.assertNotIn('latest/download', text)
-            intel, _ = self.fixture(root, 'osx-x64')
-            with self.assertRaises(ValueError):
-                release.homebrew_cask([intel], root / 'bad.rb')
-            with self.assertRaises(ValueError):
-                release.homebrew_cask([arm, arm], root / 'duplicate.rb')
-            with self.assertRaises(ValueError):
-                release.prepare('0.2.0', 'osx-x64', development=True)
+
+    def test_homebrew_rejects_development_intel_and_wrong_channel(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path, data = self.homebrew_fixture(Path(directory))
+            for key, value in [('development', True), ('native_smoke', 'true'), ('rid', 'osx-x64'),
+                               ('bottle_tag', 'arm64_fake'), ('channel', 'signed-pkg')]:
+                altered = copy.deepcopy(data)
+                altered[key] = value
+                path.write_text(json.dumps(altered))
+                with self.subTest(key=key), self.assertRaises(ValueError): homebrew.validate(path)
+
+    def test_homebrew_rejects_tampered_assets_and_formula(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path, data = self.homebrew_fixture(Path(directory))
+            formula = path.parent / 'clone.rb'
+            formula.write_text('malicious formula')
+            with self.assertRaises(ValueError): homebrew.validate(path)
+            data['files']['clone.rb'] = release.digest(formula)
+            path.write_text(json.dumps(data))
+            with self.assertRaises(ValueError): homebrew.validate(path)
 
     def test_payload_hashes_and_paths(self):
         with tempfile.TemporaryDirectory() as directory:

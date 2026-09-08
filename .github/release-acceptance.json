@@ -6,8 +6,8 @@
     "arm64_macos_14": "pending",
     "authenticated_clone": "pending",
     "homebrew_install_upgrade_uninstall": "pending",
-    "pkg_install_upgrade_uninstall": "pending",
-    "quarantined_signed_download": "pending"
+    "tampered_bottle_rejected": "pending"
   },
-  "evidence": []
+  "evidence": [],
+  "channel": "homebrew"
 }

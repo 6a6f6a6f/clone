@@ -163,27 +163,6 @@ def prepare(release_version, rid, development):
         print(manifest)
 
 
-def homebrew_cask(manifests, destination):
-    entries = [validate_manifest(Path(path)) for path in manifests]
-    if len(entries) != 1 or entries[0]['rid'] != 'osx-arm64':
-        raise ValueError('Exactly one validated Apple Silicon manifest is required.')
-    data = entries[0]
-    name = next(name for name in data['files'] if name.endswith('.tar.gz'))
-    text = ['cask "clone" do', f'  version "{data["version"]}"',
-            f'  sha256 "{data["files"][name]}"',
-            f'  url "https://github.com/6a6f6a6f/clone/releases/download/v{data["version"]}/{name}"', '',
-            '  name "Clone"', '  desc "Organize Git checkouts safely"',
-            '  homepage "https://github.com/6a6f6a6f/clone"', '',
-            '  depends_on arch: :arm64', '  depends_on macos: ">= :sonoma"',
-            '  depends_on formula: "git"', '', '  binary "bin/clone"',
-            '  zsh_completion "share/zsh/site-functions/_clone"', 'end', '']
-    destination = Path(destination)
-    if destination.exists():
-        raise ValueError('Cask output exists; refusing to replace it.')
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    destination.write_text('\n'.join(text))
-
-
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest='command', required=True)
@@ -194,14 +173,10 @@ def main():
     verify = commands.add_parser('verify')
     verify.add_argument('manifest', type=Path)
     verify.add_argument('--development', action='store_true')
-    brew = commands.add_parser('cask')
-    brew.add_argument('manifests', nargs=1)
-    brew.add_argument('--output', required=True)
     args = parser.parse_args()
     try:
         if args.command == 'prepare': prepare(args.version, args.rid, args.development)
         elif args.command == 'verify': validate_manifest(args.manifest, production=not args.development)
-        else: homebrew_cask(args.manifests, args.output)
     except (ValueError, KeyError, OSError, subprocess.CalledProcessError) as error:
         parser.exit(1, f'Packaging failed: {error}\n')
 
