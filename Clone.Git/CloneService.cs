@@ -103,6 +103,9 @@ public static class CloneService
         if (!interactive)
         {
             environment["GIT_TERMINAL_PROMPT"] = "0";
+            environment["GIT_ASKPASS"] = "/usr/bin/false";
+            environment["SSH_ASKPASS"] = "/usr/bin/false";
+            environment["SSH_ASKPASS_REQUIRE"] = "never";
             environment["GCM_INTERACTIVE"] = "never";
             environment["GIT_SSH_COMMAND"] = (Environment.GetEnvironmentVariable("GIT_SSH_COMMAND") ?? "ssh") + " -oBatchMode=yes";
         }
