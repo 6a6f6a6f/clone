@@ -8,5 +8,6 @@
     <PackageReference Include="MSTest.TestAdapter" Version="4.4.0" />
     <PackageReference Include="MSTest.TestFramework" Version="4.4.0" />
     <ProjectReference Include="../Clone.Git/Clone.Git.csproj" />
+    <ProjectReference Include="../Clone.Console/Clone.Console.csproj" />
   </ItemGroup>
 </Project>

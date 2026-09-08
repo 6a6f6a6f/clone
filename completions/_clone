@@ -1,0 +1,21 @@
+#compdef clone
+
+_arguments \
+  '--help[Show help]' \
+  '--version[Show version]' \
+  '--root[Project root]:directory:_directories' \
+  '--git[Git executable]:executable:_files' \
+  '--layout[Directory layout]:layout:(host legacy)' \
+  '--timeout[Deadline in seconds]:seconds:' \
+  '--config-dir[Configuration directory]:directory:_directories' \
+  '--quiet[Suppress progress]' \
+  '--non-interactive[Disable authentication prompts]' \
+  '--dry-run[Preview the destination]' \
+  '*:remote or command:->command'
+
+if [[ $state == command ]]; then
+  case $words[2] in
+    config) _values 'configuration command' show reset set-root set-layout set-git set-timeout ;;
+    *) _values 'command' doctor config ;;
+  esac
+fi

@@ -44,11 +44,13 @@ public static class ConfigurationStore
 
     public static void Validate(CloneConfiguration configuration)
     {
-        if (configuration.Root is { } root && (!Path.IsPathFullyQualified(root) || root == "/" || root.Any(char.IsControl))) throw new ArgumentException("Configuration root must be an absolute directory path.");
-        if (configuration.GitPath is { } git && !Path.IsPathFullyQualified(git)) throw new ArgumentException("Configured Git path must be absolute.");
+        if (configuration.Root is { } root && (!Path.IsPathFullyQualified(root) || Path.GetFullPath(root) == "/" || UnsafePath(root))) throw new ArgumentException("Configuration root must be an absolute directory path.");
+        if (configuration.GitPath is { } git && (!Path.IsPathFullyQualified(git) || UnsafePath(git))) throw new ArgumentException("Configured Git path must be absolute.");
         if (configuration.Layout is { } layout && !Enum.IsDefined(layout)) throw new ArgumentException("Unknown configured layout.");
         if (configuration.TimeoutSeconds is < 1 or > 86400) throw new ArgumentException("Timeout must be between 1 and 86400 seconds.");
     }
+
+    private static bool UnsafePath(string path) => path.Any(c => char.IsControl(c) || char.GetUnicodeCategory(c) == System.Globalization.UnicodeCategory.Format);
 
     public static void InspectRoot(string root)
     {
