@@ -4,16 +4,22 @@ A small macOS command-line tool that keeps Git checkouts organized. Clone is
 written in C# and distributed as a Native AOT executable: an installed .NET
 runtime is not required. Git is required.
 
-The .NET 10 migration is merged. CI validates pushes and pull requests on macOS 26; **the old v0.1.0
-release does not contain these fixes**. New distribution artifacts must pass the
-[release gates](docs/CI_FREEZE.md) before publication. See the
-[modernization tracker](https://github.com/6a6f6a6f/clone/issues/1).
+The current stable release is [v1.0.0](https://github.com/6a6f6a6f/clone/releases/tag/v1.0.0).
+It supports macOS 26 (Tahoe) on Apple Silicon. Historical 0.x releases are unsupported.
 
 ## Installation
 
-See [macOS distribution](docs/MACOS_DISTRIBUTION.md) for the Homebrew formula/bottle channel and
-deferred signed package channel, update/uninstall commands, and their current acceptance
-gates. See [published releases](https://github.com/6a6f6a6f/clone/releases) for availability.
+```sh
+brew tap 6a6f6a6f/clone https://github.com/6a6f6a6f/clone.git
+brew install --formula 6a6f6a6f/clone/clone
+clone --version
+clone doctor
+```
+
+The prebuilt Homebrew bottle needs no .NET runtime or Apple Developer certificate.
+Git is installed as a dependency when needed. See [macOS distribution](docs/MACOS_DISTRIBUTION.md)
+for upgrades, uninstall, source-build requirements and checksum/provenance verification.
+Signed `.pkg` installers are outside the current scope.
 
 ## Quickstart
 

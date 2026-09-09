@@ -18,8 +18,8 @@ official Homebrew/core package or an assertion of Homebrew maintainer review.
 
 ## Install, upgrade and remove
 
-After a verified release and its generated `Formula/clone.rb` metadata PR are
-published and merged:
+The verified v1.0.0 release and its `Formula/clone.rb` metadata provide these
+installation and lifecycle commands:
 
 ```sh
 brew tap 6a6f6a6f/clone https://github.com/6a6f6a6f/clone.git
