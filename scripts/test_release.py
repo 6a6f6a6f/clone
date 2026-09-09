@@ -3,6 +3,9 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
+
+import publish_release
 
 import release
 import homebrew
@@ -117,6 +120,37 @@ class ReleaseTests(unittest.TestCase):
             self.assertEqual('/Library/Application Support/Clone/bin\n', path_entry.read_text())
             self.assertFalse((root / 'payload/opt/homebrew').exists())
             self.assertFalse((root / 'payload/usr/local/bin').exists())
+
+    def test_draft_promotion_uses_id_and_checks_complete_assets(self):
+        for scenario in ('valid', 'wrong-tag', 'missing-asset', 'bad-digest'):
+            with self.subTest(scenario=scenario), tempfile.TemporaryDirectory() as directory:
+                manifest, data = self.homebrew_fixture(Path(directory))
+                calls, uploaded = [], []
+
+                def fake_gh(*args, capture=False):
+                    calls.append(args)
+                    if args[:2] == ('release', 'upload'):
+                        for path in args[3:args.index('--repo')]:
+                            path = Path(path)
+                            uploaded.append({'name': path.name, 'size': path.stat().st_size,
+                                             'digest': 'sha256:' + release.digest(path)})
+                    if args[:2] == ('release', 'view'):
+                        self.assertIn('databaseId', args)
+                        return '123\n'
+                    if args[0] == 'api':
+                        self.assertEqual('repos/6a6f6a6f/clone/releases/123', args[1])
+                        assets = copy.deepcopy(uploaded)
+                        if scenario == 'missing-asset': assets.pop()
+                        if scenario == 'bad-digest': assets[0]['digest'] = 'sha256:' + '0' * 64
+                        return json.dumps({'draft': True, 'tag_name': 'v9.9.9' if scenario == 'wrong-tag' else 'v0.2.0', 'assets': assets})
+                    return ''
+
+                with patch.object(publish_release, 'check'), patch.object(publish_release, 'verify_tag', return_value=data['commit']), patch.object(publish_release, 'gh', side_effect=fake_gh):
+                    if scenario == 'valid':
+                        publish_release.publish([manifest])
+                    else:
+                        with self.assertRaises(ValueError): publish_release.publish([manifest])
+                self.assertEqual(scenario == 'valid', any(call[:2] == ('release', 'edit') for call in calls))
 
     def test_release_gate_stays_closed(self):
         data = json.loads((release.ROOT / '.github/release-acceptance.json').read_text())

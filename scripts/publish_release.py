@@ -54,9 +54,11 @@ def publish(manifests):
         gh('release', 'create', tag, '--repo', REPOSITORY, '--draft', '--verify-tag', '--title',
            'feat(release): ship Clone ' + release_version + ' for macOS', '--notes-file', notes)
         gh('release', 'upload', tag, *assets, '--repo', REPOSITORY)
-        remote = json.loads(gh('api', f'repos/{REPOSITORY}/releases/tags/{tag}', capture=True))
+        # The tag REST endpoint can omit drafts; gh resolves them through its draft-aware lookup.
+        release_id = int(gh('release', 'view', tag, '--repo', REPOSITORY, '--json', 'databaseId', '--jq', '.databaseId', capture=True))
+        remote = json.loads(gh('api', f'repos/{REPOSITORY}/releases/{release_id}', capture=True))
         expected = {asset.name: (asset.stat().st_size, 'sha256:' + digest(asset)) for asset in assets}
-        if not remote['draft'] or {asset['name']: (asset['size'], asset.get('digest')) for asset in remote['assets']} != expected:
+        if not remote['draft'] or remote['tag_name'] != tag or {asset['name']: (asset['size'], asset.get('digest')) for asset in remote['assets']} != expected:
             raise ValueError('Draft upload is incomplete; the draft was not published.')
         gh('release', 'edit', tag, '--repo', REPOSITORY, '--draft=false', '--latest')
         print('Release published. Promote Formula/clone.rb to the tap through a reviewed metadata PR.')
