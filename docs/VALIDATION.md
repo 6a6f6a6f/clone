@@ -72,3 +72,42 @@ Attach the results to issue #22, then review every entry in
 `.github/release-acceptance.json`. Keep pending entries pending until the actual
 platform/channel evidence exists. Publishing code, executing development tests,
 or obtaining a successful cross-build does not satisfy these gates.
+
+## Stalled-output regression procedure
+
+Managed tests cover synchronized blocked callbacks, timeout/cancellation
+classification, process-tree termination, normal exit, inherited open pipes,
+queue saturation and coalescing, late callback exceptions, CLI cleanup with
+stalled stderr, and success with stalled stdout. Blocked fixtures release their
+sinks in finally blocks; test deadlines are independent of production timeouts.
+
+After `make publish RID=osx-arm64`, run:
+
+```sh
+python3 scripts/test_stalled_output.py artifacts/publish/osx-arm64/clone
+```
+
+This native subprocess harness leaves the read end of a real stderr pipe open
+without draining, emits diagnostics through fake Git, and verifies timeout exit
+124 and SIGINT exit 130 while the pipe is still open. It asserts Git and child
+termination, no destination output/publication, and staging removal. A separate
+case prefills stdout before launch and verifies successful publication and exit
+without requiring destination-text delivery. All cases use local fixtures and
+have an outer deadline plus process cleanup; no external remote is contacted.
+
+### Local fix verification: October 3, 2026
+
+- Original Runner: both blocked-consumer regressions failed as expected. Timeout
+  left the Runner task incomplete; caller cancellation missed the independent
+  five-second test deadline. Sinks were released in test cleanup.
+- Final `make check`: passed format verification, Release build with zero
+  warnings/errors, 70 managed tests, and 10 packaging tests.
+- Final `osx-arm64` Native AOT publish: passed.
+- Final real-pipe harness: all three cases passed, including stderr occupancy
+  sufficient to block the next diagnostic write, timeout/SIGINT exit before
+  reader release, and success with prefilled stdout.
+- SDK limitation: this machine had 10.0.400 while `global.json` requires
+  10.0.401. Checks used 10.0.400 with a temporary SDK selection override;
+  `global.json` was restored unchanged. These results do not claim verification
+  with 10.0.401. MSBuild checks ran outside the sandbox because its restrictions
+  blocked local named pipes. No production release was performed.

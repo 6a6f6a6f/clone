@@ -106,6 +106,66 @@ public sealed class CliTests
     }
 
     [TestMethod]
+    [DataRow(false)]
+    [DataRow(true)]
+    public async Task BlockedStderrDoesNotPreventCleanupOrExit(bool cancel)
+    {
+        using var fixture = new Fixture();
+        using var sink = new BlockingWriter();
+        using var stdout = new StringWriter();
+        using var cancellation = new CancellationTokenSource();
+        var root = fixture.Subdirectory("projects");
+        var script = fixture.Script("mkdir repository\necho $$ > " + Fixture.Quote(Path.Combine(fixture.Root, "git.pid")) +
+            "\necho diagnostic >&2\n/bin/sleep 30\n");
+        var operation = Task.Run(() => CliApplication.RunAsync(["--root", root, "--git", script, "--timeout", "2",
+            "--config-dir", Path.Combine(fixture.Root, "config"), "https://example.com/team/repo"],
+            stdout, sink, false, cancellation.Token, _ => null));
+        try
+        {
+            await sink.Entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            // The preamble can block before Git starts; wait for staging and process evidence.
+            var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(5);
+            while (!File.Exists(Path.Combine(fixture.Root, "git.pid")) && DateTime.UtcNow < deadline) await Task.Delay(10);
+            Assert.IsTrue(File.Exists(Path.Combine(fixture.Root, "git.pid")));
+            if (cancel) cancellation.Cancel();
+            Assert.AreEqual(cancel ? 130 : 124, await operation.WaitAsync(TimeSpan.FromSeconds(5)));
+            Assert.AreEqual(0, Directory.GetDirectories(root, ".clone-staging-*").Length);
+            Assert.IsFalse(Directory.Exists(Path.Combine(root, "example.com/team/repo")));
+            Assert.IsFalse(Fixture.IsRunning(int.Parse(File.ReadAllText(Path.Combine(fixture.Root, "git.pid")))));
+            Assert.IsFalse(sink.Released);
+        }
+        finally
+        {
+            sink.Release();
+            await operation.WaitAsync(TimeSpan.FromSeconds(5));
+            await sink.Exited.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        }
+    }
+
+    [TestMethod]
+    public async Task BlockedSuccessStdoutDoesNotPreventExit()
+    {
+        using var fixture = new Fixture();
+        using var sink = new BlockingWriter();
+        using var stderr = new StringWriter();
+        var script = fixture.Script("mkdir -p repository/.git\ntouch repository/.git/HEAD repository/.git/config\n");
+        var operation = Task.Run(() => CliApplication.RunAsync(["--root", fixture.Root, "--git", script,
+            "--config-dir", Path.Combine(fixture.Root, "config"), "https://example.com/team/repo"], sink, stderr, false, environment: _ => null));
+        try
+        {
+            await sink.Entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            Assert.AreEqual(0, await operation.WaitAsync(TimeSpan.FromSeconds(5)));
+            Assert.AreEqual(0, Directory.GetDirectories(fixture.Root, ".clone-staging-*").Length);
+        }
+        finally
+        {
+            sink.Release();
+            await operation.WaitAsync(TimeSpan.FromSeconds(5));
+            await sink.Exited.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        }
+    }
+
+    [TestMethod]
     public async Task DoctorIsReadOnly()
     {
         using var fixture = new Fixture();

@@ -121,12 +121,90 @@ public sealed class ProcessTests
     }
 
     [TestMethod]
+    public async Task InheritedPipeDoesNotPreventNormalExit()
+    {
+        using var fixture = new Fixture();
+        var script = fixture.Script("/bin/sleep 30 &\necho $! > child.pid\necho diagnostic\nexit 0\n");
+        try
+        {
+            var result = await Runner.RunAsync(script, [], fixture.Root).WaitAsync(TimeSpan.FromSeconds(5));
+            Assert.AreEqual(0, result.ExitCode);
+            Assert.AreEqual("diagnostic", result.Diagnostics[^1]);
+        }
+        finally
+        {
+            if (File.Exists(Path.Combine(fixture.Root, "child.pid")))
+            {
+                var pid = int.Parse(File.ReadAllText(Path.Combine(fixture.Root, "child.pid")));
+                if (Fixture.IsRunning(pid))
+                {
+                    using var child = Process.GetProcessById(pid);
+                    child.Kill();
+                    await child.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(5));
+                }
+            }
+        }
+    }
+
+    [TestMethod]
     public async Task FailingOutputConsumerStopsTheProcess()
     {
         using var fixture = new Fixture();
         var script = fixture.Script("echo output\n/bin/sleep 30\n");
         await Assert.ThrowsExactlyAsync<IOException>(() => Runner.RunAsync(script, [], fixture.Root,
             output: (_, _) => throw new InvalidOperationException("synthetic callback failure"), timeout: TimeSpan.FromSeconds(3)));
+    }
+
+    [TestMethod]
+    [DataRow(false)]
+    [DataRow(true)]
+    public async Task BlockedConsumerDoesNotPreventTermination(bool cancel)
+    {
+        using var fixture = new Fixture();
+        using var sink = new BlockingWriter();
+        using var cancellation = new CancellationTokenSource();
+        var script = fixture.Script("echo $$ > git.pid\necho diagnostic >&2\n/bin/sleep 30 &\necho $! > child.pid\nwait\n");
+        var operation = Task.Run(() => Runner.RunAsync(script, [], fixture.Root, output: (_, _) => sink.WriteLine("blocked"),
+            timeout: TimeSpan.FromSeconds(2), cancellationToken: cancellation.Token));
+        try
+        {
+            await sink.Entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            if (cancel) cancellation.Cancel();
+            if (cancel) await Assert.ThrowsExactlyAsync<OperationCanceledException>(() => operation.WaitAsync(TimeSpan.FromSeconds(5)));
+            else await Assert.ThrowsExactlyAsync<TimeoutException>(() => operation.WaitAsync(TimeSpan.FromSeconds(5)));
+            Assert.IsTrue(operation.IsCompleted, "The Runner task itself must complete before the outer test deadline.");
+            Assert.IsFalse(Fixture.IsRunning(int.Parse(File.ReadAllText(Path.Combine(fixture.Root, "git.pid")))));
+            Assert.IsFalse(Fixture.IsRunning(int.Parse(File.ReadAllText(Path.Combine(fixture.Root, "child.pid")))));
+            Assert.IsFalse(sink.Released);
+        }
+        finally
+        {
+            sink.Release();
+            try { await operation.WaitAsync(TimeSpan.FromSeconds(5)); } catch (Exception) { }
+            await sink.Exited.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        }
+    }
+
+    [TestMethod]
+    public async Task NormalExitDoesNotWaitForBlockedConsumer()
+    {
+        using var fixture = new Fixture();
+        using var sink = new BlockingWriter();
+        var operation = Task.Run(() => Runner.RunAsync(fixture.Script("echo diagnostic\n"), [], fixture.Root,
+            output: (_, _) => sink.WriteLine("blocked")));
+        try
+        {
+            await sink.Entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            var result = await operation.WaitAsync(TimeSpan.FromSeconds(5));
+            Assert.AreEqual(0, result.ExitCode);
+            CollectionAssert.AreEqual(new[] { "diagnostic" }, result.Diagnostics.ToArray());
+        }
+        finally
+        {
+            sink.Release();
+            await operation.WaitAsync(TimeSpan.FromSeconds(5));
+            await sink.Exited.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        }
     }
 
     [TestMethod]
@@ -155,6 +233,38 @@ public sealed class StorageTests
         Assert.IsTrue(File.Exists(Path.Combine(outside, "sentinel")));
         Assert.IsFalse(Directory.Exists(Path.Combine(root, "example.com/team/repo")));
         Assert.AreEqual(0, Directory.GetDirectories(root, ".clone-staging-*").Length);
+    }
+
+    [TestMethod]
+    [DataRow(false)]
+    [DataRow(true)]
+    public async Task BlockedLibraryConsumerDoesNotPreventStagingCleanup(bool cancel)
+    {
+        using var fixture = new Fixture();
+        using var sink = new BlockingWriter();
+        using var cancellation = new CancellationTokenSource();
+        var root = fixture.Subdirectory("projects");
+        var script = fixture.Script("mkdir repository\n/bin/sleep 30 &\necho $! > " +
+            Fixture.Quote(Path.Combine(fixture.Root, "child.pid")) + "\necho diagnostic >&2\nwait\n");
+        var operation = Task.Run(() => CloneService.CloneAsync(new("https://example.com/team/repo", root,
+            GitPath: script, Timeout: TimeSpan.FromSeconds(2)), (_, _) => sink.WriteLine("blocked"), cancellation.Token));
+        try
+        {
+            await sink.Entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            if (cancel) cancellation.Cancel();
+            if (cancel) await Assert.ThrowsExactlyAsync<OperationCanceledException>(() => operation.WaitAsync(TimeSpan.FromSeconds(5)));
+            else await Assert.ThrowsExactlyAsync<TimeoutException>(() => operation.WaitAsync(TimeSpan.FromSeconds(5)));
+            Assert.IsTrue(operation.IsCompleted);
+            Assert.AreEqual(0, Directory.GetDirectories(root, ".clone-staging-*").Length);
+            Assert.IsFalse(Directory.Exists(Path.Combine(root, "example.com/team/repo")));
+            Assert.IsFalse(Fixture.IsRunning(int.Parse(File.ReadAllText(Path.Combine(fixture.Root, "child.pid")))));
+        }
+        finally
+        {
+            sink.Release();
+            try { await operation.WaitAsync(TimeSpan.FromSeconds(5)); } catch (Exception) { }
+            await sink.Exited.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        }
     }
 
     [TestMethod]
