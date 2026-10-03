@@ -6,6 +6,9 @@ public sealed record ProcessResult(int ExitCode, IReadOnlyList<string> Diagnosti
 
 public sealed class Runner
 {
+    private const int DiagnosticHistoryCapacity = 16;
+    private const int ReadBufferCharacters = 1024;
+    private static readonly TimeSpan ReaderShutdownGrace = TimeSpan.FromSeconds(2);
     public static string ResolveExecutable(string name, string? explicitPath = null, string? searchPath = null)
     {
         if (explicitPath is not null)
@@ -29,6 +32,10 @@ public sealed class Runner
         return OperatingSystem.IsWindows() || (File.GetUnixFileMode(path) & (UnixFileMode.UserExecute | UnixFileMode.GroupExecute | UnixFileMode.OtherExecute)) != 0;
     }
 
+    /// <summary>
+    /// Runs Git with bounded diagnostic retention and best-effort callback delivery.
+    /// A blocked callback can outlive return; caller-owned sinks must support that lifetime.
+    /// </summary>
     public static async Task<ProcessResult> RunAsync(string executable, IEnumerable<string> arguments, string workingDirectory,
         Action<string, bool>? output = null, IReadOnlyDictionary<string, string?>? environment = null,
         TimeSpan? timeout = null, CancellationToken cancellationToken = default)
@@ -63,15 +70,20 @@ public sealed class Runner
         }
         var diagnostics = new Queue<string>();
         var outputLock = new object();
+        // CLI owns a single delivery lifecycle, including terminal messages after staging cleanup.
+        var sharedDelivery = output?.Target as OutputDelivery;
+        var delivery = sharedDelivery ?? (output is null ? null : new OutputDelivery(output));
         void Receive(string line, bool error)
         {
             var safe = DiagnosticText.Sanitize(line);
+            if (safe.Length > OutputDelivery.MaximumMessageCharacters) safe = safe[..OutputDelivery.MaximumMessageCharacters];
             lock (outputLock)
             {
-                if (diagnostics.Count == 16) diagnostics.Dequeue();
+                if (diagnostics.Count == DiagnosticHistoryCapacity) diagnostics.Dequeue();
                 diagnostics.Enqueue(safe);
-                output?.Invoke(safe, error);
             }
+            if (sharedDelivery is not null) output!(safe, error);
+            else delivery?.Write(safe, error);
         }
         using var reading = new CancellationTokenSource();
         var outputFailure = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -81,16 +93,19 @@ public sealed class Runner
             catch (OperationCanceledException) { throw; }
             catch { outputFailure.TrySetResult(); throw; }
         }
-        var streams = Task.WhenAll(ReadOutputAsync(process.StandardOutput, false), ReadOutputAsync(process.StandardError, true));
+        var streams = Task.WhenAll(
+            Task.Run(() => ReadOutputAsync(process.StandardOutput, false)),
+            Task.Run(() => ReadOutputAsync(process.StandardError, true)));
         using var lifetime = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         if (timeout is { } limit) lifetime.CancelAfter(limit);
         var canceled = false;
         try
         {
             var exited = process.WaitForExitAsync(lifetime.Token);
-            var first = await Task.WhenAny(exited, outputFailure.Task).ConfigureAwait(false);
-            if (first == outputFailure.Task)
+            var first = await Task.WhenAny(exited, outputFailure.Task, delivery?.Failure ?? outputFailure.Task).ConfigureAwait(false);
+            if (first != exited)
             {
+                lifetime.Token.ThrowIfCancellationRequested();
                 Kill(process);
                 await process.WaitForExitAsync(CancellationToken.None).ConfigureAwait(false);
                 throw new IOException("Could not consume Git output; the operation was stopped.");
@@ -106,18 +121,19 @@ public sealed class Runner
         finally
         {
             // A child retaining a pipe must not hang the caller after Git exits.
-            reading.CancelAfter(TimeSpan.FromSeconds(2));
+            reading.CancelAfter(ReaderShutdownGrace);
             try { await streams.ConfigureAwait(false); }
             catch (OperationCanceledException) { }
             catch (Exception) when (streams.IsFaulted) { }
+            if (sharedDelivery is null && delivery is not null) await delivery.CompleteAsync().ConfigureAwait(false);
         }
-        if (streams.IsFaulted && !canceled) throw new IOException("Could not consume Git output; the operation was stopped.");
+        if ((streams.IsFaulted || delivery?.Failure.IsCompleted == true) && !canceled) throw new IOException("Could not consume Git output; the operation was stopped.");
         if (canceled)
         {
             cancellationToken.ThrowIfCancellationRequested();
             throw new TimeoutException("Git exceeded the configured timeout; the incomplete clone was not published.");
         }
-        return new ProcessResult(process.ExitCode, diagnostics.ToArray());
+        lock (outputLock) return new ProcessResult(process.ExitCode, diagnostics.ToArray());
     }
 
     private static void Kill(Process process)
@@ -128,7 +144,7 @@ public sealed class Runner
 
     private static async Task ReadLinesAsync(StreamReader reader, Action<string> receive, CancellationToken token)
     {
-        var buffer = new char[1024];
+        var buffer = new char[ReadBufferCharacters];
         var line = new StringBuilder();
         var oversized = false;
         int count;
@@ -146,7 +162,7 @@ public sealed class Runner
                 }
                 else if (!oversized)
                 {
-                    if (line.Length == 8192) { line.Clear(); oversized = true; }
+                    if (line.Length == OutputDelivery.MaximumMessageCharacters) { line.Clear(); oversized = true; }
                     else line.Append(character);
                 }
             }

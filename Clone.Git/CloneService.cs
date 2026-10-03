@@ -21,7 +21,24 @@ public static class CloneService
         return Path.Combine([Path.GetFullPath(request.Root), .. Segments(remote, request.Layout)]);
     }
 
+    /// <summary>
+    /// Clones into owned staging and publishes only a validated, successful checkout.
+    /// Output is best effort; an in-flight synchronous callback may outlive this operation.
+    /// </summary>
     public static async Task<string> CloneAsync(CloneRequest request, Action<string, bool>? output = null, CancellationToken cancellationToken = default)
+    {
+        var sharedDelivery = output?.Target as OutputDelivery;
+        var delivery = sharedDelivery ?? (output is null ? null : new OutputDelivery(output));
+        var bufferedOutput = output;
+        if (sharedDelivery is null && delivery is not null) bufferedOutput = delivery.Write;
+        try { return await CloneCoreAsync(request, bufferedOutput, cancellationToken).ConfigureAwait(false); }
+        finally
+        {
+            if (sharedDelivery is null && delivery is not null) await delivery.CompleteAsync().ConfigureAwait(false);
+        }
+    }
+
+    private static async Task<string> CloneCoreAsync(CloneRequest request, Action<string, bool>? output, CancellationToken cancellationToken)
     {
         if (!OperatingSystem.IsMacOS()) throw new PlatformNotSupportedException("This release supports macOS only.");
         if (MacDirectory.GetUser() == 0) throw new IOException("Run clone as your normal user, without sudo.");
@@ -80,7 +97,11 @@ public static class CloneService
             finally
             {
                 try { root.RemoveOwnedTree(stagingName); }
-                catch (IOException) { output?.Invoke("Could not remove an owned staging directory. Inspect the project root for .clone-staging-* before removing it manually.", true); }
+                catch (IOException)
+                {
+                    const string warning = "Could not remove an owned staging directory. Inspect the project root for .clone-staging-* before removing it manually.";
+                    output?.Invoke(warning, true);
+                }
             }
         }
         finally { foreach (var directory in parents) directory.Dispose(); }

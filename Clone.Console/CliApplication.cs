@@ -11,6 +11,20 @@ public static class CliApplication
     public static async Task<int> RunAsync(string[] args, TextWriter stdout, TextWriter stderr, bool interactive,
         CancellationToken cancellationToken = default, Func<string, string?>? environment = null)
     {
+        var delivery = new OutputDelivery((line, error) => (error ? stderr : stdout).WriteLine(line));
+        int exitCode;
+        try
+        {
+            exitCode = await RunCommandAsync(args, new DeliveryWriter(delivery, false), new DeliveryWriter(delivery, true),
+                interactive, cancellationToken, environment, delivery).ConfigureAwait(false);
+        }
+        finally { await delivery.CompleteAsync().ConfigureAwait(false); }
+        return exitCode == 0 && delivery.Failure.IsCompleted ? 1 : exitCode;
+    }
+
+    private static async Task<int> RunCommandAsync(string[] args, TextWriter stdout, TextWriter stderr, bool interactive,
+        CancellationToken cancellationToken, Func<string, string?>? environment, OutputDelivery delivery)
+    {
         environment ??= Environment.GetEnvironmentVariable;
         try
         {
@@ -38,7 +52,7 @@ public static class CliApplication
             if (options.DryRun) { await stdout.WriteLineAsync(preview); return 0; }
             if (!options.Quiet) await stderr.WriteLineAsync("Cloning into " + DiagnosticText.Sanitize(preview));
             var destination = await CloneService.CloneAsync(request,
-                (line, _) => { if (!options.Quiet) stderr.WriteLine(line); }, cancellationToken).ConfigureAwait(false);
+                options.Quiet ? null : delivery.WriteError, cancellationToken).ConfigureAwait(false);
             await stdout.WriteLineAsync(destination);
             return 0;
         }
@@ -49,6 +63,17 @@ public static class CliApplication
         {
             await stderr.WriteLineAsync(DiagnosticText.Sanitize(error.Message));
             return 1;
+        }
+    }
+
+    private sealed class DeliveryWriter(OutputDelivery delivery, bool error) : TextWriter
+    {
+        public override System.Text.Encoding Encoding => System.Text.Encoding.UTF8;
+        public override void WriteLine(string? value) => delivery.Write(value ?? "", error);
+        public override Task WriteLineAsync(string? value)
+        {
+            WriteLine(value);
+            return Task.CompletedTask;
         }
     }
 
