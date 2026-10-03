@@ -11,11 +11,20 @@ public static class CliApplication
     public static async Task<int> RunAsync(string[] args, TextWriter stdout, TextWriter stderr, bool interactive,
         CancellationToken cancellationToken = default, Func<string, string?>? environment = null)
     {
-        var destinationWriter = stdout;
-        var diagnosticWriter = stderr;
-        var delivery = new OutputDelivery((line, error) => (error ? diagnosticWriter : destinationWriter).WriteLine(line));
-        stdout = new DeliveryWriter(delivery, false);
-        stderr = new DeliveryWriter(delivery, true);
+        var delivery = new OutputDelivery((line, error) => (error ? stderr : stdout).WriteLine(line));
+        int exitCode;
+        try
+        {
+            exitCode = await RunCommandAsync(args, new DeliveryWriter(delivery, false), new DeliveryWriter(delivery, true),
+                interactive, cancellationToken, environment, delivery).ConfigureAwait(false);
+        }
+        finally { await delivery.CompleteAsync().ConfigureAwait(false); }
+        return exitCode == 0 && delivery.Failure.IsCompleted ? 1 : exitCode;
+    }
+
+    private static async Task<int> RunCommandAsync(string[] args, TextWriter stdout, TextWriter stderr, bool interactive,
+        CancellationToken cancellationToken, Func<string, string?>? environment, OutputDelivery delivery)
+    {
         environment ??= Environment.GetEnvironmentVariable;
         try
         {
@@ -55,7 +64,6 @@ public static class CliApplication
             await stderr.WriteLineAsync(DiagnosticText.Sanitize(error.Message));
             return 1;
         }
-        finally { await delivery.CompleteAsync().ConfigureAwait(false); }
     }
 
     private sealed class DeliveryWriter(OutputDelivery delivery, bool error) : TextWriter

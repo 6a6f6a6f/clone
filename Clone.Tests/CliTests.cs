@@ -166,6 +166,66 @@ public sealed class CliTests
     }
 
     [TestMethod]
+    [DataRow("help")]
+    [DataRow("version")]
+    [DataRow("dry-run")]
+    [DataRow("config-show")]
+    [DataRow("config-reset")]
+    [DataRow("clone")]
+    public async Task PromptStdoutFailureDoesNotReturnSuccess(string command)
+    {
+        using var fixture = new Fixture();
+        using var stdout = new FailingWriter();
+        using var stderr = new StringWriter();
+        var config = Path.Combine(fixture.Root, "config");
+        var script = fixture.Script("mkdir -p repository/.git\ntouch repository/.git/HEAD repository/.git/config\n");
+        var args = command switch
+        {
+            "help" => new[] { "--help" },
+            "version" => ["--version"],
+            "dry-run" => ["--dry-run", "--root", fixture.Root, "--config-dir", config, "https://example.com/team/repo"],
+            "config-show" => ["config", "show", "--config-dir", config],
+            "config-reset" => ["config", "reset", "--config-dir", config],
+            _ => ["--quiet", "--root", fixture.Root, "--git", script, "--config-dir", config, "https://example.com/team/repo"]
+        };
+        var code = await CliApplication.RunAsync(args, stdout, stderr, false, environment: _ => null).WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.AreEqual(1, code);
+        Assert.AreEqual(1, stdout.Calls);
+        Assert.AreEqual(0, Directory.GetDirectories(fixture.Root, ".clone-staging-*").Length);
+        if (command == "clone") Assert.IsTrue(Directory.Exists(Path.Combine(fixture.Root, "example.com/team/repo")));
+    }
+
+    [TestMethod]
+    [DataRow(false)]
+    [DataRow(true)]
+    public async Task TerminalWriterFailurePreservesTimeoutAndCancellation(bool cancel)
+    {
+        using var fixture = new Fixture();
+        using var stdout = new StringWriter();
+        using var stderr = new FailingWriter();
+        using var cancellation = new CancellationTokenSource();
+        if (cancel) cancellation.Cancel();
+        var script = fixture.Script("/bin/sleep 30\n");
+        var code = await CliApplication.RunAsync(["--quiet", "--root", fixture.Root, "--git", script, "--timeout", "1",
+            "--config-dir", Path.Combine(fixture.Root, "config"), "https://example.com/team/repo"],
+            stdout, stderr, false, cancellation.Token, _ => null).WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.AreEqual(cancel ? 130 : 124, code);
+        Assert.AreEqual(1, stderr.Calls);
+        Assert.AreEqual(0, Directory.GetDirectories(fixture.Root, ".clone-staging-*").Length);
+    }
+
+    private sealed class FailingWriter : TextWriter
+    {
+        internal int Calls { get; private set; }
+        public override System.Text.Encoding Encoding => System.Text.Encoding.UTF8;
+        public override void WriteLine(string? value)
+        {
+            Calls++;
+            throw new IOException("synthetic writer failure");
+        }
+    }
+
+    [TestMethod]
     public async Task DoctorIsReadOnly()
     {
         using var fixture = new Fixture();

@@ -100,8 +100,14 @@ terminal stdout/stderr messages, so final writes cannot reintroduce an unbounded
 wait. Messages may be omitted when a sink is stalled; timeout/cancellation exit
 codes and staging cleanup do not require successful delivery. Configuration,
 help, and doctor use the same writer adapters for a consistent bounded lifecycle.
-Output failures stop a running Git command when observed by Runner; output
-failures after its return do not change an already completed operation's status.
+Output failures stop a running Git command when observed by Runner. The CLI
+checks for worker failures after its bounded delivery grace and changes an
+otherwise successful exit to code 1. Timeout/cancellation and other existing
+failure codes retain precedence. A writer failure does not undo a checkout
+already published successfully. Failures arriving after abandonment cannot
+change the returned status; stalled writers still allow bounded completion.
+Only errors signaled by the supplied writer are observable; a writer that
+silently ignores an OS output error provides no failure signal.
 
 Cancellation cannot interrupt an arbitrary synchronous callback already inside
 a blocked write. The background worker and its bounded state can outlive the
